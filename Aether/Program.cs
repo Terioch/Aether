@@ -1,0 +1,36 @@
+using Aether.Core.Services;
+using Aether.Extensions;
+using Aether.Services;
+using Serilog;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.UseSerilog();
+builder.AddCors();
+
+builder.Services.AddEndpointMappers();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient();
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddTransient<IDashboardService, DashboardService>();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+app.UseHttpsRedirection();
+app.UseEndpointMappers();
+app.UseCors();
+app.UseSerilogRequestLogging();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.Run();
