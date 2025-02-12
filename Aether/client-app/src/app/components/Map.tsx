@@ -7,13 +7,13 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapEntry } from "../models/map-entry";
+import { MapEntriesView, MapEntry } from "../models/map-entries-view";
 import { Fragment, useEffect, useState } from "react";
-import { getNearbyMapEntriesRequest } from "../requests/get-nearby-map-entries-request";
+import { MapEntriesRequest as MapEntriesRequest } from "../requests/get-nearby-map-entries-request";
 
-async function getNearbyMapEntries(
-  request: getNearbyMapEntriesRequest
-): Promise<MapEntry[]> {
+async function getMapEntries(
+  request: MapEntriesRequest
+): Promise<MapEntriesView> {
   return new Promise(async (resolve, reject) => {
     try {
       const res = await fetch(
@@ -32,6 +32,7 @@ async function getNearbyMapEntries(
       }
 
       const data = await res.json();
+      console.log({ nearbyEntries: data });
       resolve(data);
     } catch (error) {
       reject(error);
@@ -42,19 +43,14 @@ async function getNearbyMapEntries(
 interface Props {
   geoLocation: GeolocationPosition;
   airQualityIndex: number;
-  nearbyMapEntries: MapEntry[] | undefined;
 }
 
-export default function Map({
-  geoLocation,
-  airQualityIndex,
-  nearbyMapEntries,
-}: Props) {
+export default function Map({ geoLocation, airQualityIndex }: Props) {
   const [map, setMap] = useState<LeafletMap>();
-
-  const center = new LatLng(
-    geoLocation.coords.latitude,
-    geoLocation.coords.longitude
+  const [mapCentreEntry, setMapCentreEntry] = useState<MapEntry>();
+  const [nearbyMapEntries, setNearbyMapEntries] = useState<MapEntry[]>();
+  const [mapCentre, setMapCentre] = useState<LatLng>(
+    new LatLng(geoLocation.coords.latitude, geoLocation.coords.longitude)
   );
 
   useEffect(() => {
@@ -65,9 +61,10 @@ export default function Map({
 
     const northEast = bounds.getNorthEast();
     const southWest = bounds.getSouthWest();
+    console.log({ bounds });
 
-    const request: getNearbyMapEntriesRequest = {
-      location: {
+    const request: MapEntriesRequest = {
+      centre: {
         latitude: geoLocation.coords.latitude,
         longitude: geoLocation.coords.longitude,
       },
@@ -84,7 +81,10 @@ export default function Map({
       },
     };
 
-    getNearbyMapEntries(request);
+    getMapEntries(request).then((res) => {
+      setMapCentreEntry(res.centre);
+      setNearbyMapEntries(res.nearbyEntries);
+    });
   }, [map]);
 
   const MapEventHandler = () => {
@@ -107,9 +107,14 @@ export default function Map({
   const onMapChange = (zoom: number, bounds: LatLngBounds) => {
     const northEast = bounds.getNorthEast();
     const southWest = bounds.getSouthWest();
+    const center = bounds.getCenter();
+    console.log(center, {
+      lat: (northEast.lat - southWest.lat) / 2 + southWest.lat,
+      lng: (northEast.lng - southWest.lng) / 2 + southWest.lng,
+    });
 
-    const request: getNearbyMapEntriesRequest = {
-      location: {
+    const request: MapEntriesRequest = {
+      centre: {
         latitude: geoLocation!.coords.latitude,
         longitude: geoLocation!.coords.longitude,
       },
@@ -126,12 +131,17 @@ export default function Map({
       },
     };
 
-    getNearbyMapEntries(request);
+    setMapCentre(center);
+
+    getMapEntries(request).then((res) => {
+      setMapCentreEntry(res.centre);
+      setNearbyMapEntries(res.nearbyEntries);
+    });
   };
 
   return (
     <MapContainer
-      center={center}
+      center={mapCentre}
       zoom={13}
       scrollWheelZoom={false}
       style={{ height: 600, width: "100%" }}
@@ -142,7 +152,7 @@ export default function Map({
       />
 
       <Marker
-        position={center}
+        position={mapCentre}
         icon={
           new Icon({
             iconUrl: "/marker-icon.png",
@@ -151,8 +161,8 @@ export default function Map({
           })
         }
       >
-        <p> {airQualityIndex}</p>
-        <Popup>Index: {airQualityIndex}</Popup>
+        <p> {mapCentreEntry?.airQualityIndex.index}</p>
+        <Popup>Index: {mapCentreEntry?.airQualityIndex.index}</Popup>
       </Marker>
 
       {nearbyMapEntries?.map((mapEntry, idx) => (

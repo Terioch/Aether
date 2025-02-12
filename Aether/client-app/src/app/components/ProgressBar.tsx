@@ -4,6 +4,7 @@ interface Props {
 }
 
 export default function ProgressBar({ index, value }: Props) {
+  // TODO: Use regular <progress /> element and set colour based on danger level.
   function getColour() {
     switch (index) {
       case 1:

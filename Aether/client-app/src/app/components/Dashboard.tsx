@@ -4,9 +4,6 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { DashboardView, Pollutant } from "../models/dashboard-view";
 import ProgressBar from "./ProgressBar";
-import { MapEntry } from "../models/map-entry";
-import { getNearbyMapEntriesRequest } from "../requests/get-nearby-map-entries-request";
-import { LatLngBounds } from "leaflet";
 
 async function getView(position: GeolocationPosition): Promise<DashboardView> {
   return new Promise(async (resolve, reject) => {
@@ -29,7 +26,7 @@ async function getView(position: GeolocationPosition): Promise<DashboardView> {
 
 export default function Dashboard() {
   const [view, setView] = useState<DashboardView>();
-  const [nearbyMapEntries, setNearbyMapEntries] = useState<MapEntry[]>();
+
   const [geoLocation, setGeoLocation] = useState<GeolocationPosition>();
 
   const Map = dynamic(() => import("./Map"), { ssr: false });
@@ -69,7 +66,6 @@ export default function Dashboard() {
             <Map
               geoLocation={geoLocation}
               airQualityIndex={view.airQualityIndex.index}
-              nearbyMapEntries={nearbyMapEntries}
             />
           )}
 

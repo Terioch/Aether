@@ -1,7 +1,7 @@
 import { GeoLocation } from "../models/air-quality";
 
-export interface getNearbyMapEntriesRequest {
-  location: GeoLocation;
+export interface MapEntriesRequest {
+  centre: GeoLocation;
   zoom: number;
   bounds: MapBounds;
 }
