@@ -1,8 +1,8 @@
 ﻿namespace Aether.Core.Requests;
 
-public sealed record GetNearbyMapEntriesRequest
+public sealed record MapEntriesRequest
 {
-    public required GeoLocation Location { get; set; }
+    public required GeoLocation Centre { get; set; }
 
     public int Zoom { get; set; }
 

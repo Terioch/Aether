@@ -4,7 +4,6 @@ interface Props {
 }
 
 export default function ProgressBar({ index, value }: Props) {
-  // TODO: Use regular <progress /> element and set colour based on danger level.
   function getColour() {
     switch (index) {
       case 1:
@@ -27,7 +26,7 @@ export default function ProgressBar({ index, value }: Props) {
         className={`h-16 ${getColour()} rounded-lg absolute top-0 left-0`}
         style={{ width: `${value}px` }}
       ></div>
-      {[2, 3, 4, 5].map((i) => (
+      {/* {[2, 3, 4, 5].map((i) => (
         <div
           key={i}
           className="absolute top-0 bottom-0 w-px bg-gray-500"
@@ -35,7 +34,7 @@ export default function ProgressBar({ index, value }: Props) {
         >
           <p className="">50</p>
         </div>
-      ))}
+      ))} */}
     </div>
   );
 }

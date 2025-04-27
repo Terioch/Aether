@@ -1,12 +1,16 @@
-﻿namespace Aether.Repositories.Common;
+﻿using Aether.Core.Repositories;
+using Aether.Repositories.Configuration;
+using Microsoft.EntityFrameworkCore;
 
-/*public abstract class BaseRepository<TEntity, TId> : IBaseRepository<TEntity, TId> where TEntity : class
+namespace Aether.Repositories.Common;
+
+public abstract class BaseRepository<TEntity, TId> : IBaseRepository<TEntity, TId> where TEntity : class
 {
-    protected readonly ArtemisContext _context;
-    protected readonly IArtemisConnectionFactory _connectionFactory;
+    protected readonly AetherContext _context;
+    protected readonly IAetherConnectionFactory _connectionFactory;
     protected readonly DbSet<TEntity> _entities;
 
-    protected BaseRepository(ArtemisContext context, IArtemisConnectionFactory connectionFactory)
+    protected BaseRepository(AetherContext context, IAetherConnectionFactory connectionFactory)
     {
         _context = context;
         _connectionFactory = connectionFactory;
@@ -33,4 +37,22 @@
     {
         return _entities.ToListAsync();
     }
-}*/
+
+    public async Task<TEntity?> DeletePermanent(TId id)
+    {
+        var entity = await _entities.FindAsync(id);
+
+        if (entity == null) return null;
+
+        _entities.Remove(entity);
+
+        return entity;
+    }
+
+    public Task DeletePermanent(IEnumerable<TEntity> entities)
+    {
+        _entities.RemoveRange(entities);
+
+        return Task.CompletedTask;
+    }
+}

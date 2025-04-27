@@ -27,11 +27,11 @@ public class DashboardService : IDashboardService
         return new DashboardView
         {
             Location = location,
-            AirQualityIndex = index
+            AirQuality = index
         };
     }
 
-    private async Task<AirQualityIndex> GetAirQualityIndex(GeoLocation location)
+    private async Task<AirQuality> GetAirQualityIndex(GeoLocation location)
     {
         var url = $"http://api.openweathermap.org/data/2.5/air_pollution?lat={location.Latitude}&lon={location.Longitude}&appid={_apiKey}";
 
@@ -39,12 +39,12 @@ public class DashboardService : IDashboardService
 
         var responseString = await client.GetStringAsync(url);
 
-        var response = JsonConvert.DeserializeObject<ApiAirQualityIndex>(responseString)
+        var response = JsonConvert.DeserializeObject<ApiAirQuality>(responseString)
             ?? throw new Exception("Air quality index not found for this location");
 
         var item = response.List[0];
 
-        return new AirQualityIndex
+        return new AirQuality
         {
             Location = new GeoLocation(response.Coord.Lat, response.Coord.Lon),
             Index = item.Main.Aqi,
@@ -82,35 +82,32 @@ public class DashboardService : IDashboardService
         };
     }
 
-    public async Task<List<MapEntry>> GetNearbyMapEntries(GetNearbyMapEntriesRequest request)
+    public async Task<MapEntriesView> GetMapEntries(MapEntriesRequest request)
     {
-        var nearbyLocations = GetNearbyLocations(request.Location, 13);
+        // TODO: Pollutants should be a list within AirQuality and have a name and possibly a unit field
+        var locations = new List<GeoLocation> { request.Centre };
+        var nearbyLocations = GetNearbyLocations(request);
+
+        //locations.AddRange(nearbyLocations);
 
         var responseTasksByLocation = new Dictionary<GeoLocation, Task<string>>();
         var mapEntries = new List<MapEntry>();
-        using var client = new HttpClient();
+        using var client = new HttpClient();        
 
-        foreach (var nearbyLocation in nearbyLocations)
-        {
-            var url = $"http://api.openweathermap.org/data/2.5/air_pollution?lat={request.Location.Latitude}&lon={request.Location.Longitude}&appid={_apiKey}";
-
-            var responseString = client.GetStringAsync(url);
-
-            responseTasksByLocation.Add(nearbyLocation, responseString);
-        }
+        ProcessLocations(locations, responseTasksByLocation, client);
 
         await Task.WhenAll(responseTasksByLocation.Values);
 
-        foreach (var nearbyLocation in nearbyLocations)
+        foreach (var location in locations)
         {
-            var responseString = responseTasksByLocation[nearbyLocation].Result;
+            var responseString = responseTasksByLocation[location].Result;
 
-            var response = JsonConvert.DeserializeObject<ApiAirQualityIndex>(responseString)
+            var response = JsonConvert.DeserializeObject<ApiAirQuality>(responseString)
                 ?? throw new Exception("Air quality index not found for this location");
 
             var item = response.List[0];
 
-            var index = new AirQualityIndex
+            var index = new AirQuality
             {
                 Location = new GeoLocation(response.Coord.Lat, response.Coord.Lon),
                 Index = item.Main.Aqi,
@@ -126,30 +123,45 @@ public class DashboardService : IDashboardService
 
             var mapEntry = new MapEntry
             {
-                Location = new GeoLocation(response.Coord.Lat, response.Coord.Lon),
-                AirQualityIndex = index
+                AirQuality = index
             };
 
             mapEntries.Add(mapEntry);
         }
 
-        return mapEntries;
+        return new MapEntriesView 
+        { 
+            Centre = mapEntries[0],
+            NearbyEntries = mapEntries.Skip(1).ToList()
+        };
     }
 
-    private List<GeoLocation> GetNearbyLocations(GeoLocation center, int zoom)
+    private List<GeoLocation> GetNearbyLocations(MapEntriesRequest request)
     {
-        // Calculate scale factor based on zoom level
-        double scale = Math.Max(0.1, 1.0 / Math.Pow(2, zoom - 5)); // Adjust the formula to fine-tune
+        // TODO: Return cities in locations table within the requested boundary
 
         // Define nearby locations relative to the center
         var nearbyLocations = new List<GeoLocation>
         {
-            new GeoLocation(center.Latitude + 0.2 * scale, center.Longitude + 0.2 * scale),
-            new GeoLocation(center.Latitude + 0.1 * scale, center.Longitude + 0.1 * scale),
-            new GeoLocation(center.Latitude - 0.1 * scale, center.Longitude - 0.1 * scale),
-            new GeoLocation(center.Latitude - 0.2 * scale, center.Longitude - 0.2 * scale)
+            new GeoLocation((request.Bounds.NorthEast.Latitude + request.Centre.Latitude) / 2, (request.Bounds.NorthEast.Longitude + request.Centre.Longitude) / 2),
+            new GeoLocation((request.Bounds.SouthWest.Latitude + request.Centre.Latitude) / 2, (request.Bounds.SouthWest.Longitude + request.Centre.Longitude) / 2)
         };
 
         return nearbyLocations;
+    }
+
+    private void ProcessLocations(
+        List<GeoLocation> locations,
+        Dictionary<GeoLocation, Task<string>> responseTasksByLocation,
+        HttpClient client)
+    {
+        foreach (var nearbyLocation in locations)
+        {
+            var url = $"http://api.openweathermap.org/data/2.5/air_pollution?lat={nearbyLocation.Latitude}&lon={nearbyLocation.Longitude}&appid={_apiKey}";
+
+            var responseString = client.GetStringAsync(url);
+
+            responseTasksByLocation.Add(nearbyLocation, responseString);
+        }
     }
 }

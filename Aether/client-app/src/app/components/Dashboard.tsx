@@ -62,12 +62,7 @@ export default function Dashboard() {
             <h1 className="font-light text-4xl">{view.location.city}</h1>
           </div>
 
-          {geoLocation && (
-            <Map
-              geoLocation={geoLocation}
-              airQualityIndex={view.airQualityIndex.index}
-            />
-          )}
+          {geoLocation && <Map geoLocation={geoLocation} />}
 
           <div>
             <h1 className="font-semibold text-2xl">Breakdown</h1>
@@ -76,43 +71,43 @@ export default function Dashboard() {
               <div className="flex gap-4 justify-between">
                 {showProgressBar(
                   "Nitrogen Dioxide",
-                  view.airQualityIndex.nitrogenDioxide
+                  view.airQuality.nitrogenDioxide
                 )}
 
                 {showProgressBar(
                   "Nitrogen Oxide",
-                  view.airQualityIndex.nitrogenOxide
+                  view.airQuality.nitrogenOxide
                 )}
               </div>
 
               <div className="flex gap-4 justify-between">
                 {showProgressBar(
                   "Particulate Matter 10",
-                  view.airQualityIndex.particulateMatter10
+                  view.airQuality.particulateMatter10
                 )}
 
                 {showProgressBar(
                   "Particulate Matter 2.5",
-                  view.airQualityIndex.particulateMatter2_5
+                  view.airQuality.particulateMatter2_5
                 )}
               </div>
 
               <div className="flex gap-4 justify-between">
                 {showProgressBar(
                   "Sulfur Dioxide",
-                  view.airQualityIndex.sulfurDioxide
+                  view.airQuality.sulfurDioxide
                 )}
 
                 {showProgressBar(
                   "Carbon Monoxide",
-                  view.airQualityIndex.carbonMonoxide
+                  view.airQuality.carbonMonoxide
                 )}
               </div>
 
               <div className="flex gap-4 justify-between">
-                {showProgressBar("Ozone", view.airQualityIndex.ozone)}
+                {showProgressBar("Ozone", view.airQuality.ozone)}
 
-                {showProgressBar("Ammonia", view.airQualityIndex.ammonia)}
+                {showProgressBar("Ammonia", view.airQuality.ammonia)}
               </div>
             </div>
           </div>

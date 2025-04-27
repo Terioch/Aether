@@ -1,4 +1,6 @@
 import { Icon, LatLng, LatLngBounds, Map as LeafletMap } from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { Fragment, useEffect, useState } from "react";
 import {
   MapContainer,
   Marker,
@@ -6,10 +8,9 @@ import {
   TileLayer,
   useMapEvents,
 } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 import { MapEntriesView, MapEntry } from "../models/map-entries-view";
-import { Fragment, useEffect, useState } from "react";
-import { MapEntriesRequest as MapEntriesRequest } from "../requests/get-nearby-map-entries-request";
+import { MapEntriesRequest } from "../requests/get-nearby-map-entries-request";
+import MapMarker from "./MapMarker";
 
 async function getMapEntries(
   request: MapEntriesRequest
@@ -42,10 +43,9 @@ async function getMapEntries(
 
 interface Props {
   geoLocation: GeolocationPosition;
-  airQualityIndex: number;
 }
 
-export default function Map({ geoLocation, airQualityIndex }: Props) {
+export default function Map({ geoLocation }: Props) {
   const [map, setMap] = useState<LeafletMap>();
   const [mapCentreEntry, setMapCentreEntry] = useState<MapEntry>();
   const [nearbyMapEntries, setNearbyMapEntries] = useState<MapEntry[]>();
@@ -115,8 +115,8 @@ export default function Map({ geoLocation, airQualityIndex }: Props) {
 
     const request: MapEntriesRequest = {
       centre: {
-        latitude: geoLocation!.coords.latitude,
-        longitude: geoLocation!.coords.longitude,
+        latitude: center.lat,
+        longitude: center.lng,
       },
       zoom,
       bounds: {
@@ -151,39 +151,28 @@ export default function Map({ geoLocation, airQualityIndex }: Props) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <Marker
-        position={mapCentre}
-        icon={
-          new Icon({
-            iconUrl: "/marker-icon.png",
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-          })
-        }
-      >
-        <p> {mapCentreEntry?.airQualityIndex.index}</p>
-        <Popup>Index: {mapCentreEntry?.airQualityIndex.index}</Popup>
-      </Marker>
+      {mapCentreEntry && (
+        <MapMarker position={mapCentre} entry={mapCentreEntry} />
+      )}
 
       {nearbyMapEntries?.map((mapEntry, idx) => (
         <Fragment key={idx}>
           <Marker
             position={
               new LatLng(
-                mapEntry.location.latitude,
-                mapEntry.location.longitude
+                mapEntry.airQuality.location.latitude,
+                mapEntry.airQuality.location.longitude
               )
             }
             icon={
               new Icon({
-                iconUrl: "/marker-icon.png",
                 iconSize: [25, 41],
                 iconAnchor: [12, 41],
               })
             }
           >
-            <p> {mapEntry.airQualityIndex.index}</p>
-            <Popup>Index: {mapEntry.airQualityIndex.index}</Popup>
+            <p> {mapEntry.airQuality.index}</p>
+            <Popup>{mapEntry.airQuality.index}</Popup>
           </Marker>
         </Fragment>
       ))}

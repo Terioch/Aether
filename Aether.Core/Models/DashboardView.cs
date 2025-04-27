@@ -4,6 +4,6 @@
     {
         public GlobalLocation? Location { get; set; }
 
-        public required AirQualityIndex AirQualityIndex { get; set; }
+        public required AirQuality AirQuality { get; set; }
     }
 }

@@ -7,5 +7,5 @@ public interface IDashboardService
 {
     Task<DashboardView> GetDashboardView(GeoLocation geoLocation);
 
-    Task<List<MapEntry>> GetNearbyMapEntries(GetNearbyMapEntriesRequest request);
+    Task<MapEntriesView> GetMapEntries(MapEntriesRequest request);
 }

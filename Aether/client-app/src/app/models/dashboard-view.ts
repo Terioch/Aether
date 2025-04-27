@@ -2,11 +2,11 @@ import { GlobalLocation } from "./global-location";
 
 export interface DashboardView {
   location: GlobalLocation;
-  airQualityIndex: AirQualityIndex;
+  airQuality: AirQuality;
 }
 
-export interface AirQualityIndex {
-  location: Geolocation;
+export interface AirQuality {
+  location: GeoLocation;
   index: number;
   sulfurDioxide: Pollutant;
   nitrogenOxide: Pollutant;

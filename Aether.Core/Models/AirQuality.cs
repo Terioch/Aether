@@ -2,7 +2,7 @@
 
 namespace Aether.Core
 {
-    public class AirQualityIndex
+    public class AirQuality
     {
         public required GeoLocation Location { get; set; }
 

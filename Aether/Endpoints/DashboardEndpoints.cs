@@ -10,7 +10,7 @@ namespace Aether.Endpoints
         public void MapEndpoints(IEndpointRouteBuilder app)
         {
             app.MapGet("api/dashboard", GetDashboard);
-            app.MapPost("api/dashboard/map-entries", GetNearbyMapEntries);
+            app.MapPost("api/dashboard/map-entries", GetMapEntries);
         }
 
         private static async Task<DashboardView> GetDashboard([AsParameters] GeoLocation geoLocation, IDashboardService service)
@@ -18,9 +18,9 @@ namespace Aether.Endpoints
             return await service.GetDashboardView(geoLocation);
         }
 
-        private static async Task<List<MapEntry>> GetNearbyMapEntries(GetNearbyMapEntriesRequest parameters, IDashboardService service)
+        private static async Task<MapEntriesView> GetMapEntries(MapEntriesRequest parameters, IDashboardService service)
         {
-            return await service.GetNearbyMapEntries(parameters);
+            return await service.GetMapEntries(parameters);
         }
     }
 }

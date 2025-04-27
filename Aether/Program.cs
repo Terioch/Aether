@@ -1,5 +1,6 @@
 using Aether.Core.Services;
 using Aether.Extensions;
+using Aether.Repositories;
 using Aether.Services;
 using Serilog;
 
@@ -9,6 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.UseSerilog();
 builder.AddCors();
 
+var connections = builder.Configuration.GetSection("ConnectionStrings");
+
 builder.Services.AddEndpointMappers();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
@@ -17,7 +20,10 @@ builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddTransient<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ILocationService, LocationService>();
+
+builder.Services.AddAetherRepositories(connections["aether"]);
 
 var app = builder.Build();
 

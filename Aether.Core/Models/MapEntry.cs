@@ -2,7 +2,5 @@
 
 public class MapEntry
 {
-    public required GeoLocation Location { get; set; }
-
-    public required AirQualityIndex AirQualityIndex { get; set; }
+    public required AirQuality AirQuality { get; set; }
 }
