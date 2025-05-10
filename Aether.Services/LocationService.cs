@@ -20,30 +20,46 @@ public class LocationService : ILocationService
     public async Task CreateLocations()
     {
         const string baseUrl = "http://geodb-free-service.wirefreethought.com/v1/geo/places?limit=10";
-        var offset = 0;
+        var offset = 10;
+        var batchSize = 10;
         var allLocations = new List<LocationEntity>();
 
-        while (offset < 2)
+        var client = new HttpClient();
+
+        while (offset < 100)
         {
-            var url = baseUrl + $"&offset={offset}";
-            var client = new HttpClient();
-            var responseString = await client.GetStringAsync(url);
+            var tasks = new List<Task<List<LocationEntity>>>();           
 
-            var response = JsonConvert.DeserializeObject<GeodbCitiesResponse>(responseString)
-                ?? throw new Exception("Cities could not be found");
+            for (var i = 1; i < batchSize; ++i)
+            {
+                var url = baseUrl + $"&offset={offset}";
 
-            var locations = response.Data.ConvertAll(x => new LocationEntity 
-            { 
-                Latitude = x.Latitude, Longitude = x.Longitude 
-            });    
+                tasks.Add(GetLocationsAsync(url, client));
 
-            allLocations.AddRange(locations);
+                offset += 10;
+            }
 
-            offset += 10;
+            var locationResults = await Task.WhenAll(tasks);
+            var locations = locationResults.SelectMany(x => x);
+
+            allLocations.AddRange(locations);           
         }
 
         await _locationRepository.AddRangeAsync(allLocations);
 
         await _unitOfWork.CompleteAsync();
+    }
+
+    private static async Task<List<LocationEntity>> GetLocationsAsync(string url, HttpClient client)
+    {
+        var responseString = await client.GetStringAsync(url);
+        var response = JsonConvert.DeserializeObject<GeodbCitiesResponse>(responseString)
+            ?? throw new Exception("Cities could not be found");
+
+        return response.Data.ConvertAll(x => new LocationEntity
+        {
+            Latitude = x.Latitude,
+            Longitude = x.Longitude
+        });
     }
 }
