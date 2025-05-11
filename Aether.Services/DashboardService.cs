@@ -1,6 +1,7 @@
 ﻿using Aether.Core;
 using Aether.Core.Models;
 using Aether.Core.Models.Api;
+using Aether.Core.Repositories;
 using Aether.Core.Requests;
 using Aether.Core.Services;
 using Aether.Core.Utils;
@@ -12,10 +13,12 @@ namespace Aether.Services;
 public class DashboardService : IDashboardService
 {
     private readonly string _apiKey;
+    private readonly ILocationRepository _locationRepository;
 
-    public DashboardService(IConfiguration configuration)
+    public DashboardService(IConfiguration configuration, IAetherUnitOfWork unitOfWork)
     {
         _apiKey = configuration["ApiKeys:OpenWeatherMapApiKey"]!;
+        _locationRepository = unitOfWork.Locations;
     }
 
     public async Task<DashboardView> GetDashboardView(GeoLocation geoLocation)
@@ -84,11 +87,16 @@ public class DashboardService : IDashboardService
 
     public async Task<MapEntriesView> GetMapEntries(MapEntriesRequest request)
     {
-        // TODO: Pollutants should be a list within AirQuality and have a name and possibly a unit field
-        var locations = new List<GeoLocation> { request.Centre };
-        var nearbyLocations = GetNearbyLocations(request);
+        /* TODO: Pollutants should be a list within AirQuality and have a name and possibly a unit field.
+        Urgent TODO: Cache air quality indexes in database to avoid querying openweathermap Could also cache indexes 
+        using the built-in memory cache.
+        TODO: Monthly background job that updates indexes every 3 months. 
+        Urgent TODO: Ensure locations in database are all a minimum distance apart */
 
-        //locations.AddRange(nearbyLocations);
+        var locations = new List<GeoLocation> { request.Centre };
+        var nearbyLocations = await GetNearbyLocations(request);
+
+        locations.AddRange(nearbyLocations);
 
         var responseTasksByLocation = new Dictionary<GeoLocation, Task<string>>();
         var mapEntries = new List<MapEntry>();
@@ -100,7 +108,9 @@ public class DashboardService : IDashboardService
 
         foreach (var location in locations)
         {
-            var responseString = responseTasksByLocation[location].Result;
+            //var responseString = responseTasksByLocation[location].Result;
+            // Temporary until indexes are cached
+            var responseString = "{\"coord\":{\"lon\":-2.3637,\"lat\":53.4541},\"list\":[{\"main\":{\"aqi\":2},\"components\":{\"co\":119.47,\"no\":0,\"no2\":4.88,\"o3\":68.24,\"so2\":0.81,\"pm2_5\":2.94,\"pm10\":3.35,\"nh3\":7.54},\"dt\":1746995138}]}";
 
             var response = JsonConvert.DeserializeObject<ApiAirQuality>(responseString)
                 ?? throw new Exception("Air quality index not found for this location");
@@ -109,7 +119,7 @@ public class DashboardService : IDashboardService
 
             var index = new AirQuality
             {
-                Location = new GeoLocation(response.Coord.Lat, response.Coord.Lon),
+                Location = location,
                 Index = item.Main.Aqi,
                 CarbonMonoxide = PollutantUtils.CarbonMonoxide(item.Components.Co),
                 SulfurDioxide = PollutantUtils.SulfurDioxide(item.Components.So2),
@@ -136,18 +146,11 @@ public class DashboardService : IDashboardService
         };
     }
 
-    private List<GeoLocation> GetNearbyLocations(MapEntriesRequest request)
+    private async Task<List<GeoLocation>> GetNearbyLocations(MapEntriesRequest request)
     {
-        // TODO: Return cities in locations table within the requested boundary
+        var locations = await _locationRepository.GetAllWithinBounds(request.Bounds.NorthEast, request.Bounds.SouthWest);
 
-        // Define nearby locations relative to the center
-        var nearbyLocations = new List<GeoLocation>
-        {
-            new GeoLocation((request.Bounds.NorthEast.Latitude + request.Centre.Latitude) / 2, (request.Bounds.NorthEast.Longitude + request.Centre.Longitude) / 2),
-            new GeoLocation((request.Bounds.SouthWest.Latitude + request.Centre.Latitude) / 2, (request.Bounds.SouthWest.Longitude + request.Centre.Longitude) / 2)
-        };
-
-        return nearbyLocations;
+        return locations;
     }
 
     private void ProcessLocations(

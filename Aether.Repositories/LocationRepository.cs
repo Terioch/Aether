@@ -1,7 +1,9 @@
-﻿using Aether.Core.Entities;
+﻿using Aether.Core;
+using Aether.Core.Entities;
 using Aether.Core.Repositories;
 using Aether.Repositories.Common;
 using Aether.Repositories.Configuration;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
 
 namespace Aether.Repositories
@@ -12,6 +14,32 @@ namespace Aether.Repositories
         public Task<LocationEntity?> GetByLatLng(double latitude, double longitude)
         {
             return _entities.FirstOrDefaultAsync(x => x.Latitude == latitude && x.Longitude == longitude);
+        }
+
+        public async Task<List<GeoLocation>> GetAllWithinBounds(GeoLocation northEast, GeoLocation southWest)
+        {
+            var parameters = new DynamicParameters();
+            parameters.Add("@NorthEastLat", northEast.Latitude);
+            parameters.Add("@NorthEastLng", northEast.Longitude);
+            parameters.Add("@SouthWestLat", southWest.Latitude);
+            parameters.Add("@SouthWestLng", southWest.Longitude);
+
+            var query =
+                @"SELECT TOP(10)
+                    latitude, 
+                    longitude 
+                FROM public.locations
+                WHERE 
+                    Latitude <= @NorthEastLat AND 
+                    Longitude <= @NorthEastLng AND
+                    Latitude >= @SouthWestLat AND 
+                    Longitude >= @SouthWestLng";
+
+            using var connection = _connectionFactory.StartConnection();
+
+            var result = await connection.QueryAsync<GeoLocation>(query, parameters);
+
+            return result.ToList();
         }
     }
 }

@@ -157,23 +157,15 @@ export default function Map({ geoLocation }: Props) {
 
       {nearbyMapEntries?.map((mapEntry, idx) => (
         <Fragment key={idx}>
-          <Marker
+          <MapMarker
             position={
               new LatLng(
                 mapEntry.airQuality.location.latitude,
                 mapEntry.airQuality.location.longitude
               )
             }
-            icon={
-              new Icon({
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-              })
-            }
-          >
-            <p> {mapEntry.airQuality.index}</p>
-            <Popup>{mapEntry.airQuality.index}</Popup>
-          </Marker>
+            entry={mapEntry}
+          />
         </Fragment>
       ))}
 
