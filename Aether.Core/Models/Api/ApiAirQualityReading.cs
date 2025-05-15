@@ -1,6 +1,6 @@
 ﻿namespace Aether.Core.Models.Api
 {
-    public sealed class ApiAirQuality
+    public sealed class ApiAirQualityReading
     {
         public required ApiGeoLocation Coord { get; set; }
 

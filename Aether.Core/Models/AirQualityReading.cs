@@ -2,7 +2,7 @@
 
 namespace Aether.Core
 {
-    public class AirQuality
+    public class AirQualityReading
     {
         public required GeoLocation Location { get; set; }
 
@@ -25,16 +25,10 @@ namespace Aether.Core
         public required Pollutant Ammonia { get; set; }
     }
 
-    public class GeoLocation 
+    public class GeoLocation(double latitude, double longitude)
     {
-        public GeoLocation(double latitude, double longitude)
-        {
-            Latitude = latitude;
-            Longitude = longitude;
-        }
+        public double Latitude { get; set; } = latitude;
 
-        public double Latitude { get; set; }
-
-        public double Longitude { get; set; }
+        public double Longitude { get; set; } = longitude;
     }
 }

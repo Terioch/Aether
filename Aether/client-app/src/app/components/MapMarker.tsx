@@ -7,7 +7,10 @@ interface Props {
   entry: MapEntry;
 }
 
-export default function MapMarker({ position, entry: { airQuality } }: Props) {
+export default function MapMarker({
+  position,
+  entry: { airQualityReading },
+}: Props) {
   const markerColour = (index: number | undefined) => {
     switch (index) {
       case 1:
@@ -30,12 +33,12 @@ export default function MapMarker({ position, entry: { airQuality } }: Props) {
   const markerHtml = `
     <div class="relative flex items-center justify-center">
       <div class="w-10 h-10 ${markerColour(
-        airQuality.index
+        airQualityReading.index
       )} text-white text-sm font-bold flex items-center justify-center rounded-full shadow-md">
-        ${airQuality.index}
+        ${airQualityReading.index}
       </div>
       <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 rotate-45 w-3 h-3 ${markerColour(
-        airQuality.index
+        airQualityReading.index
       )}"></div>
     </div>
   `;
@@ -48,7 +51,7 @@ export default function MapMarker({ position, entry: { airQuality } }: Props) {
           iconSize: [30, 30],
           iconAnchor: [12, 41],
           className: `${markerColour(
-            airQuality.index
+            airQualityReading.index
           )} rounded text-white flex justify-center items-center h-full`,
           html: markerHtml,
         })
@@ -57,26 +60,29 @@ export default function MapMarker({ position, entry: { airQuality } }: Props) {
       <Popup className="w-[200px]" maxWidth={200}>
         <div className="grid grid-cols-2">
           <p style={{ margin: "0.5rem 0" }}>
-            Sulfur Dioxide: {airQuality.sulfurDioxide.index}
+            Sulfur Dioxide: {airQualityReading.sulfurDioxide.index}
           </p>
           <p style={{ margin: "0.5rem 0" }}>
-            Nitrogen Oxide: {airQuality.nitrogenOxide.index}
+            Nitrogen Oxide: {airQualityReading.nitrogenOxide.index}
           </p>
           <p style={{ margin: "0.5rem 0" }}>
-            Nitrogen Dioxide: {airQuality.nitrogenDioxide.index}
+            Nitrogen Dioxide: {airQualityReading.nitrogenDioxide.index}
           </p>
           <p style={{ margin: "0.5rem 0" }}>
-            Particulate Matter 10: {airQuality.particulateMatter10.index}
+            Particulate Matter 10: {airQualityReading.particulateMatter10.index}
           </p>
           <p style={{ margin: "0.5rem 0" }}>
-            Particulate Matter 2.5: {airQuality.particulateMatter2_5.index}
-          </p>
-          <p style={{ margin: "0.5rem 0" }}>Ozone: {airQuality.ozone.index}</p>
-          <p style={{ margin: "0.5rem 0" }}>
-            Carbon Monoxide: {airQuality.carbonMonoxide.index}
+            Particulate Matter 2.5:{" "}
+            {airQualityReading.particulateMatter2_5.index}
           </p>
           <p style={{ margin: "0.5rem 0" }}>
-            Ammonia: {airQuality.ammonia.index}
+            Ozone: {airQualityReading.ozone.index}
+          </p>
+          <p style={{ margin: "0.5rem 0" }}>
+            Carbon Monoxide: {airQualityReading.carbonMonoxide.index}
+          </p>
+          <p style={{ margin: "0.5rem 0" }}>
+            Ammonia: {airQualityReading.ammonia.index}
           </p>
         </div>
       </Popup>

@@ -7,4 +7,10 @@ public class LocationEntity
     public double Latitude { get; set; }
 
     public double Longitude { get; set; }
+
+    #region navigation properties
+
+    public virtual AirQualityReadingEntity? AirQualityReading { get; set; }
+
+    #endregion
 }

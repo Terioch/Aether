@@ -2,5 +2,5 @@
 
 public class MapEntry
 {
-    public required AirQuality AirQuality { get; set; }
+    public required AirQualityReading AirQualityReading { get; set; }
 }

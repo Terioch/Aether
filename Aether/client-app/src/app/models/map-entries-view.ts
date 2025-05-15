@@ -1,5 +1,4 @@
-import { GeoLocation } from "./air-quality";
-import { AirQuality as AirQuality } from "./dashboard-view";
+import { AirQualityReading } from "./dashboard-view";
 
 export interface MapEntriesView {
   centre: MapEntry;
@@ -7,5 +6,5 @@ export interface MapEntriesView {
 }
 
 export interface MapEntry {
-  airQuality: AirQuality;
+  airQualityReading: AirQualityReading;
 }

@@ -1,10 +1,5 @@
 ﻿using Aether.Core.Repositories;
 using Aether.Repositories.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Aether.Repositories;
 
@@ -17,9 +12,15 @@ public sealed class AetherUnitOfWork : IAetherUnitOfWork
         _context = context;
 
         Locations = new LocationRepository(context, connectionFactory);
+        AirQualityReadings = new AirQualityReadingRepository(context, connectionFactory);
+        AirQualityLocations = new AirQualityLocationRepository(context, connectionFactory);
     }
 
     public ILocationRepository Locations { get; private set; }
+
+    public IAirQualityReadingRepository AirQualityReadings { get; set; }
+
+    public IAirQualityLocationRepository AirQualityLocations { get; set; }
 
     public async Task<int> CompleteAsync()
     {

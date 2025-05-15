@@ -25,15 +25,16 @@ namespace Aether.Repositories
             parameters.Add("@SouthWestLng", southWest.Longitude);
 
             var query =
-                @"SELECT TOP(10)
+                @"SELECT
                     latitude, 
                     longitude 
-                FROM public.locations
+                FROM public.locations                
                 WHERE 
                     Latitude <= @NorthEastLat AND 
                     Longitude <= @NorthEastLng AND
                     Latitude >= @SouthWestLat AND 
-                    Longitude >= @SouthWestLng";
+                    Longitude >= @SouthWestLng
+                LIMIT 10";
 
             using var connection = _connectionFactory.StartConnection();
 

@@ -1,4 +1,5 @@
 ﻿using Aether.Core;
+using Aether.Core.Entities;
 using Aether.Core.Models;
 using Aether.Core.Models.Api;
 using Aether.Core.Repositories;
@@ -13,12 +14,18 @@ namespace Aether.Services;
 public class DashboardService : IDashboardService
 {
     private readonly string _apiKey;
+    private readonly IAetherUnitOfWork _unitOfWork;
     private readonly ILocationRepository _locationRepository;
+    private readonly IAirQualityLocationRepository _airQualityLocationRepository;
+    private readonly IAirQualityReadingRepository _airQualityReadingRepository;
 
     public DashboardService(IConfiguration configuration, IAetherUnitOfWork unitOfWork)
     {
         _apiKey = configuration["ApiKeys:OpenWeatherMapApiKey"]!;
+        _unitOfWork = unitOfWork;
         _locationRepository = unitOfWork.Locations;
+        _airQualityLocationRepository = unitOfWork.AirQualityLocations;
+        _airQualityReadingRepository = unitOfWork.AirQualityReadings;
     }
 
     public async Task<DashboardView> GetDashboardView(GeoLocation geoLocation)
@@ -30,11 +37,11 @@ public class DashboardService : IDashboardService
         return new DashboardView
         {
             Location = location,
-            AirQuality = index
+            AirQualityReading = index
         };
     }
 
-    private async Task<AirQuality> GetAirQualityIndex(GeoLocation location)
+    private async Task<AirQualityReading> GetAirQualityIndex(GeoLocation location)
     {
         var url = $"http://api.openweathermap.org/data/2.5/air_pollution?lat={location.Latitude}&lon={location.Longitude}&appid={_apiKey}";
 
@@ -42,12 +49,12 @@ public class DashboardService : IDashboardService
 
         var responseString = await client.GetStringAsync(url);
 
-        var response = JsonConvert.DeserializeObject<ApiAirQuality>(responseString)
+        var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
             ?? throw new Exception("Air quality index not found for this location");
 
         var item = response.List[0];
 
-        return new AirQuality
+        return new AirQualityReading
         {
             Location = new GeoLocation(response.Coord.Lat, response.Coord.Lon),
             Index = item.Main.Aqi,
@@ -91,33 +98,55 @@ public class DashboardService : IDashboardService
         Urgent TODO: Cache air quality indexes in database to avoid querying openweathermap Could also cache indexes 
         using the built-in memory cache.
         TODO: Monthly background job that updates indexes every 3 months. 
-        Urgent TODO: Ensure locations in database are all a minimum distance apart */
+        Urgent TODO: Ensure locations in database are all a minimum distance apart 
+        Urgent TODO: Delete all locations in database, add a name column, then re-import
+        Duplicate key error location id: ... */
 
-        var locations = new List<GeoLocation> { request.Centre };
-        var nearbyLocations = await GetNearbyLocations(request);
+        var locationsForApi = new List<GeoLocation> { request.Centre };
 
-        locations.AddRange(nearbyLocations);
+        var result = await _airQualityLocationRepository.GetAirQualityDataWithinBounds(request.Bounds.NorthEast, request.Bounds.SouthWest);
+
+        var mapEntries = result.Readings.ConvertAll(r => new MapEntry
+        {
+            AirQualityReading = new AirQualityReading
+            {
+                Location = new(r.Latitude, r.Longitude),
+                Index = r.Index,
+                CarbonMonoxide = PollutantUtils.CarbonMonoxide(r.CarbonMonoxide),
+                SulfurDioxide = PollutantUtils.SulfurDioxide(r.SulfurDioxide),
+                NitrogenDioxide = PollutantUtils.NitrogenDioxide(r.NitrogenDioxide),
+                NitrogenOxide = PollutantUtils.NitrogenOxide(r.NitrogenOxide),
+                Ozone = PollutantUtils.Ozone(r.Ozone),
+                ParticulateMatter10 = PollutantUtils.ParticulateMatter_10(r.ParticulateMatter10),
+                ParticulateMatter2_5 = PollutantUtils.ParticulateMatter_25(r.ParticulateMatter2_5),
+                Ammonia = PollutantUtils.Ammonia(r.Ammonia)
+            }
+        });
+
+        var missingLocations = result.MissingLocations.ConvertAll(x => new GeoLocation(x.Latitude, x.Longitude));
+        locationsForApi.AddRange(missingLocations);
 
         var responseTasksByLocation = new Dictionary<GeoLocation, Task<string>>();
-        var mapEntries = new List<MapEntry>();
+        var readingsToCache = new List<AirQualityReadingEntity>();
         using var client = new HttpClient();        
 
-        ProcessLocations(locations, responseTasksByLocation, client);
+        ProcessLocations(locationsForApi, responseTasksByLocation, client);
 
         await Task.WhenAll(responseTasksByLocation.Values);
 
-        foreach (var location in locations)
+        foreach (var location in locationsForApi)
         {
-            //var responseString = responseTasksByLocation[location].Result;
-            // Temporary until indexes are cached
-            var responseString = "{\"coord\":{\"lon\":-2.3637,\"lat\":53.4541},\"list\":[{\"main\":{\"aqi\":2},\"components\":{\"co\":119.47,\"no\":0,\"no2\":4.88,\"o3\":68.24,\"so2\":0.81,\"pm2_5\":2.94,\"pm10\":3.35,\"nh3\":7.54},\"dt\":1746995138}]}";
+            var locationEntity = result.MissingLocations.FirstOrDefault(x => x.Latitude ==  location.Latitude && x.Longitude == location.Longitude);
 
-            var response = JsonConvert.DeserializeObject<ApiAirQuality>(responseString)
+            // Temporary until readings are cached
+            //var responseString = "{\"coord\":{\"lon\":-2.3637,\"lat\":53.4541},\"list\":[{\"main\":{\"aqi\":2},\"components\":{\"co\":119.47,\"no\":0,\"no2\":4.88,\"o3\":68.24,\"so2\":0.81,\"pm2_5\":2.94,\"pm10\":3.35,\"nh3\":7.54},\"dt\":1746995138}]}";
+            var responseString = responseTasksByLocation[location].Result;
+            var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
                 ?? throw new Exception("Air quality index not found for this location");
 
             var item = response.List[0];
 
-            var index = new AirQuality
+            var reading = new AirQualityReading
             {
                 Location = location,
                 Index = item.Main.Aqi,
@@ -131,26 +160,42 @@ public class DashboardService : IDashboardService
                 Ammonia = PollutantUtils.Ammonia(item.Components.Nh3)
             };
 
+            if (locationEntity is not null)
+            {
+                var readingToCache = new AirQualityReadingEntity
+                {
+                    LocationId = locationEntity.Id,
+                    Index = reading.Index,
+                    CarbonMonoxide = reading.CarbonMonoxide.Concentration,
+                    SulfurDioxide = reading.SulfurDioxide.Concentration,
+                    NitrogenDioxide = reading.NitrogenDioxide.Concentration,
+                    NitrogenOxide = reading.NitrogenOxide.Concentration,
+                    Ozone = reading.Ozone.Concentration,
+                    ParticulateMatter10 = reading.ParticulateMatter10.Concentration,
+                    ParticulateMatter2_5 = reading.ParticulateMatter2_5.Concentration,
+                    Ammonia = reading.Ammonia.Concentration
+                };
+
+                readingsToCache.Add(readingToCache);
+            }          
+
             var mapEntry = new MapEntry
             {
-                AirQuality = index
+                AirQualityReading = reading
             };
 
             mapEntries.Add(mapEntry);
         }
+
+        await _airQualityReadingRepository.AddRangeAsync(readingsToCache);
+
+        await _unitOfWork.CompleteAsync();
 
         return new MapEntriesView 
         { 
             Centre = mapEntries[0],
             NearbyEntries = mapEntries.Skip(1).ToList()
         };
-    }
-
-    private async Task<List<GeoLocation>> GetNearbyLocations(MapEntriesRequest request)
-    {
-        var locations = await _locationRepository.GetAllWithinBounds(request.Bounds.NorthEast, request.Bounds.SouthWest);
-
-        return locations;
     }
 
     private void ProcessLocations(

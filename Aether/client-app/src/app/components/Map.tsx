@@ -160,8 +160,8 @@ export default function Map({ geoLocation }: Props) {
           <MapMarker
             position={
               new LatLng(
-                mapEntry.airQuality.location.latitude,
-                mapEntry.airQuality.location.longitude
+                mapEntry.airQualityReading.location.latitude,
+                mapEntry.airQualityReading.location.longitude
               )
             }
             entry={mapEntry}

@@ -2,10 +2,10 @@ import { GlobalLocation } from "./global-location";
 
 export interface DashboardView {
   location: GlobalLocation;
-  airQuality: AirQuality;
+  airQualityReading: AirQualityReading;
 }
 
-export interface AirQuality {
+export interface AirQualityReading {
   location: GeoLocation;
   index: number;
   sulfurDioxide: Pollutant;

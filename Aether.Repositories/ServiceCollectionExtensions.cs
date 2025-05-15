@@ -15,9 +15,9 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<AetherContext>(options =>
         {
             options.UseNpgsql(connectionString, sqlOptions =>
-            {
+            {                
                 sqlOptions.EnableRetryOnFailure(12, TimeSpan.FromSeconds(12), null);
-            });
+            }).UseSnakeCaseNamingConvention();
         });
 
         services.AddTransient<IAetherConnectionFactory>(_ => new AetherConnectionFactory(connectionString));

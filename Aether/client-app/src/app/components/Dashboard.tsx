@@ -71,43 +71,43 @@ export default function Dashboard() {
               <div className="flex gap-4 justify-between">
                 {showProgressBar(
                   "Nitrogen Dioxide",
-                  view.airQuality.nitrogenDioxide
+                  view.airQualityReading.nitrogenDioxide
                 )}
 
                 {showProgressBar(
                   "Nitrogen Oxide",
-                  view.airQuality.nitrogenOxide
+                  view.airQualityReading.nitrogenOxide
                 )}
               </div>
 
               <div className="flex gap-4 justify-between">
                 {showProgressBar(
                   "Particulate Matter 10",
-                  view.airQuality.particulateMatter10
+                  view.airQualityReading.particulateMatter10
                 )}
 
                 {showProgressBar(
                   "Particulate Matter 2.5",
-                  view.airQuality.particulateMatter2_5
+                  view.airQualityReading.particulateMatter2_5
                 )}
               </div>
 
               <div className="flex gap-4 justify-between">
                 {showProgressBar(
                   "Sulfur Dioxide",
-                  view.airQuality.sulfurDioxide
+                  view.airQualityReading.sulfurDioxide
                 )}
 
                 {showProgressBar(
                   "Carbon Monoxide",
-                  view.airQuality.carbonMonoxide
+                  view.airQualityReading.carbonMonoxide
                 )}
               </div>
 
               <div className="flex gap-4 justify-between">
-                {showProgressBar("Ozone", view.airQuality.ozone)}
+                {showProgressBar("Ozone", view.airQualityReading.ozone)}
 
-                {showProgressBar("Ammonia", view.airQuality.ammonia)}
+                {showProgressBar("Ammonia", view.airQualityReading.ammonia)}
               </div>
             </div>
           </div>
