@@ -65,7 +65,7 @@ export default function Dashboard() {
           {geoLocation && <Map geoLocation={geoLocation} />}
 
           <div>
-            <h1 className="font-semibold text-2xl">Breakdown</h1>
+            <h1 className="font-semibold text-2xl mb-4">Breakdown</h1>
 
             <div className="flex flex-col gap-4">
               <div className="flex gap-4 justify-between">

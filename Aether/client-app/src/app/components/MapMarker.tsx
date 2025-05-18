@@ -30,6 +30,23 @@ export default function MapMarker({
     }
   };
 
+  function badgeColour(index: number | undefined) {
+    switch (index) {
+      case 1:
+        return "bg-green-500";
+      case 2:
+        return "bg-yellow-300 text-black";
+      case 3:
+        return "bg-yellow-500";
+      case 4:
+        return "bg-orange-500";
+      case 5:
+        return "bg-red-600";
+      default:
+        return "bg-gray-400";
+    }
+  }
+
   const markerHtml = `
     <div class="relative flex items-center justify-center">
       <div class="w-10 h-10 ${markerColour(
@@ -57,33 +74,34 @@ export default function MapMarker({
         })
       }
     >
-      <Popup className="w-[200px]" maxWidth={200}>
-        <div className="grid grid-cols-2">
-          <p style={{ margin: "0.5rem 0" }}>
-            Sulfur Dioxide: {airQualityReading.sulfurDioxide.index}
-          </p>
-          <p style={{ margin: "0.5rem 0" }}>
-            Nitrogen Oxide: {airQualityReading.nitrogenOxide.index}
-          </p>
-          <p style={{ margin: "0.5rem 0" }}>
-            Nitrogen Dioxide: {airQualityReading.nitrogenDioxide.index}
-          </p>
-          <p style={{ margin: "0.5rem 0" }}>
-            Particulate Matter 10: {airQualityReading.particulateMatter10.index}
-          </p>
-          <p style={{ margin: "0.5rem 0" }}>
-            Particulate Matter 2.5:{" "}
-            {airQualityReading.particulateMatter2_5.index}
-          </p>
-          <p style={{ margin: "0.5rem 0" }}>
-            Ozone: {airQualityReading.ozone.index}
-          </p>
-          <p style={{ margin: "0.5rem 0" }}>
-            Carbon Monoxide: {airQualityReading.carbonMonoxide.index}
-          </p>
-          <p style={{ margin: "0.5rem 0" }}>
-            Ammonia: {airQualityReading.ammonia.index}
-          </p>
+      <Popup className="w-max p-2" closeButton={false}>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-800">
+          {[
+            ["Sulfur Dioxide", airQualityReading.sulfurDioxide.index],
+            ["Nitrogen Oxide", airQualityReading.nitrogenOxide.index],
+            ["Nitrogen Dioxide", airQualityReading.nitrogenDioxide.index],
+            ["PM10", airQualityReading.particulateMatter10.index],
+            ["PM2.5", airQualityReading.particulateMatter2_5.index],
+            ["Ozone", airQualityReading.ozone.index],
+            ["CO", airQualityReading.carbonMonoxide.index],
+            ["Ammonia", airQualityReading.ammonia.index],
+          ].map(([label, index], i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between min-w-0 gap-2"
+            >
+              <span className="text-gray-600 truncate whitespace-nowrap">
+                {label}
+              </span>
+              <span
+                className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white ${badgeColour(
+                  index as number
+                )}`}
+              >
+                {index}
+              </span>
+            </div>
+          ))}
         </div>
       </Popup>
     </Marker>

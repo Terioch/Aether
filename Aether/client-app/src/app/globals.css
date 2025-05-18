@@ -7,3 +7,8 @@
     text-wrap: balance;
   }
 }
+
+.leaflet-popup-close-button {
+  top: 0.5rem !important;
+  right: 0.5rem !important;
+}
