@@ -9,7 +9,7 @@ async function getView(position: GeolocationPosition): Promise<DashboardView> {
   return new Promise(async (resolve, reject) => {
     try {
       const res = await fetch(
-        `https://localhost:7158/api/dashboard?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`
+        `${process.env.API_URL}/api/dashboard?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`
       );
 
       if (!res.ok) {

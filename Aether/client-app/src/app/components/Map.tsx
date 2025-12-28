@@ -18,7 +18,7 @@ async function getMapEntries(
   return new Promise(async (resolve, reject) => {
     try {
       const res = await fetch(
-        `https://localhost:7158/api/dashboard/map-entries`,
+        `${process.env.API_URL}/api/dashboard/map-entries`,
         {
           method: "POST",
           headers: {
