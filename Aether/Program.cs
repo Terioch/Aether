@@ -25,8 +25,8 @@ builder.Services.AddScoped<ILocationService, LocationService>();
 
 builder.Services.AddAetherRepositories(connections["aether"]);
 
-var port = Environment.GetEnvironmentVariable("PORT") ?? "7158";
-builder.WebHost.UseUrls($"https://*:{port}");
+/*var port = Environment.GetEnvironmentVariable("PORT") ?? "7158";
+builder.WebHost.UseUrls($"http://*:{port}");*/
 
 var app = builder.Build();
 
