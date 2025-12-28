@@ -1,13 +1,7 @@
 import { LatLng, LatLngBounds, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Fragment, useEffect, useState } from "react";
-import {
-  MapContainer,
-  Marker,
-  Popup,
-  TileLayer,
-  useMapEvents,
-} from "react-leaflet";
+import { MapContainer, TileLayer, useMapEvents } from "react-leaflet";
 import { MapEntriesView, MapEntry } from "../models/map-entries-view";
 import { MapEntriesRequest } from "../requests/get-nearby-map-entries-request";
 import MapMarker from "./MapMarker";
