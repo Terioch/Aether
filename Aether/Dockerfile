@@ -6,7 +6,6 @@ EXPOSE 443
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY ["Aether/Aether.csproj", "Aether/"]
-COPY ["Aether/Aether.Console.csproj", "Aether/"]
 COPY ["Aether/AetherCore.csproj", "Aether/"]
 COPY ["Aether/Aether.Repositories.csproj", "Aether/"]
 RUN dotnet restore "Aether/Aether.Services.csproj"
