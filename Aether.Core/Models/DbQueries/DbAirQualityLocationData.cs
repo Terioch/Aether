@@ -4,17 +4,19 @@ namespace Aether.Core.Models.DbQueries;
 
 public class DbAirQualityLocationData
 {
-    public required List<DbAirQualityReading> Readings { get; set; }
+    public required List<DbAirQualityItem> Readings { get; set; }
 
     public required List<LocationEntity> MissingLocations { get; set; }
 }
 
-public class DbAirQualityReading 
+public class DbAirQualityItem 
 {
-    public int Id { get; set; }
+    public int LocationId { get; set; }
 
     public double Latitude { get; set; }
     public double Longitude { get; set; }
+
+    public int? ReadingId { get; set; }
 
     public int Index { get; set; }
 

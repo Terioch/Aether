@@ -1,5 +1,4 @@
 ﻿using Aether.Core;
-using Aether.Core.Entities;
 using Aether.Core.Models.DbQueries;
 using Aether.Core.Repositories;
 using Aether.Repositories.Common;
@@ -14,15 +13,60 @@ public class AirQualityLocationRepository : ReadonlyRepository, IAirQualityLocat
     {
     }
 
-    public async Task<DbAirQualityLocationData> GetAirQualityDataWithinBounds(GeoLocation northEast, GeoLocation southWest)
+    public async Task<List<DbAirQualityItem>> GetAirQualityDataWithinBounds(GeoLocation northEast, GeoLocation southWest, double latStep, double lngStep)
     {
         var parameters = new DynamicParameters();
         parameters.Add("@NorthEastLat", northEast.Latitude);
         parameters.Add("@NorthEastLng", northEast.Longitude);
         parameters.Add("@SouthWestLat", southWest.Latitude);
         parameters.Add("@SouthWestLng", southWest.Longitude);
+        parameters.Add("@LatStep", latStep);
+        parameters.Add("@LngStep", lngStep);
 
-        var query = @"
+        var query =
+        @"
+        WITH bucketed AS (
+            SELECT
+                floor((l.latitude  - @SouthWestLat) / @LatStep) AS lat_bucket,
+                floor((l.longitude - @SouthWestLng) / @LngStep) AS lng_bucket,
+                l.latitude,
+                l.longitude,
+                l.id AS locationId,
+                r.id AS readingId,
+                r.index,
+                r.sulfur_dioxide,
+                r.nitrogen_oxide,
+                r.nitrogen_dioxide,
+                r.particulate_matter10,
+                r.particulate_matter2_5,
+                r.ozone,
+                r.carbon_monoxide,
+                r.ammonia
+            FROM public.locations l
+            LEFT JOIN public.air_quality_readings r ON r.location_id = l.id
+            WHERE
+                l.latitude BETWEEN @SouthWestLat AND @NorthEastLat AND
+                l.longitude BETWEEN @SouthWestLng AND @NorthEastLng
+        )
+        SELECT DISTINCT ON (lat_bucket, lng_bucket)
+            locationId,
+            latitude,
+            longitude,
+            readingId,
+            index,
+            sulfur_dioxide,
+            nitrogen_oxide,
+            nitrogen_dioxide,
+            particulate_matter10,
+            particulate_matter2_5,
+            ozone,
+            carbon_monoxide,
+            ammonia
+        FROM bucketed
+        ORDER BY lat_bucket, lng_bucket DESC;
+        ";
+
+        /*var query = @"
         -- Readings
         SELECT            
             l.latitude, 
@@ -58,19 +102,12 @@ public class AirQualityLocationRepository : ReadonlyRepository, IAirQualityLocat
             l.longitude <= @NorthEastLng AND
             l.latitude >= @SouthWestLat AND 
             l.longitude >= @SouthWestLng;
-        ";
+        ";*/
 
         using var connection = _connectionFactory.StartConnection();
 
-        var result = await connection.QueryMultipleAsync(query, parameters);
+        var result = await connection.QueryAsync<DbAirQualityItem>(query, parameters);
 
-        var readings = await result.ReadAsync<DbAirQualityReading>();
-        var missingLocations = await result.ReadAsync<LocationEntity>();
-
-        return new DbAirQualityLocationData
-        {
-            Readings = readings.ToList(),
-            MissingLocations = missingLocations.ToList()
-        };
+        return result.ToList();
     }
 }

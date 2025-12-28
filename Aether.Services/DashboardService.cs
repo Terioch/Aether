@@ -6,8 +6,10 @@ using Aether.Core.Repositories;
 using Aether.Core.Requests;
 using Aether.Core.Services;
 using Aether.Core.Utils;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using System.Net.Http.Json;
 
 namespace Aether.Services;
 
@@ -18,14 +20,18 @@ public class DashboardService : IDashboardService
     private readonly ILocationRepository _locationRepository;
     private readonly IAirQualityLocationRepository _airQualityLocationRepository;
     private readonly IAirQualityReadingRepository _airQualityReadingRepository;
+    private readonly IMemoryCache _memoryCache;
 
-    public DashboardService(IConfiguration configuration, IAetherUnitOfWork unitOfWork)
+    const string baseUrl = "http://api.openweathermap.org";
+
+    public DashboardService(IConfiguration configuration, IAetherUnitOfWork unitOfWork, IMemoryCache memoryCache)
     {
         _apiKey = configuration["ApiKeys:OpenWeatherMapApiKey"]!;
         _unitOfWork = unitOfWork;
         _locationRepository = unitOfWork.Locations;
         _airQualityLocationRepository = unitOfWork.AirQualityLocations;
         _airQualityReadingRepository = unitOfWork.AirQualityReadings;
+        _memoryCache = memoryCache;
     }
 
     public async Task<DashboardView> GetDashboardView(GeoLocation geoLocation)
@@ -43,38 +49,25 @@ public class DashboardService : IDashboardService
 
     private async Task<AirQualityReading> GetAirQualityIndex(GeoLocation location)
     {
-        var url = $"http://api.openweathermap.org/data/2.5/air_pollution?lat={location.Latitude}&lon={location.Longitude}&appid={_apiKey}";
-
-        using var client = new HttpClient();
-
-        var responseString = await client.GetStringAsync(url);
-
-        var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
-            ?? throw new Exception("Air quality index not found for this location");
-
-        var item = response.List[0];
-
-        return new AirQualityReading
+        var reading = await _memoryCache.GetOrCreateAsync($"location({location.Latitude}:{location.Longitude})", async entry =>
         {
-            Location = new GeoLocation(response.Coord.Lat, response.Coord.Lon),
-            Index = item.Main.Aqi,
-            CarbonMonoxide = PollutantUtils.CarbonMonoxide(item.Components.Co),
-            SulfurDioxide = PollutantUtils.SulfurDioxide(item.Components.So2),
-            NitrogenDioxide = PollutantUtils.NitrogenDioxide(item.Components.No2),
-            NitrogenOxide = PollutantUtils.NitrogenOxide(item.Components.No),
-            Ozone = PollutantUtils.Ozone(item.Components.O3),
-            ParticulateMatter10 = PollutantUtils.ParticulateMatter_10(item.Components.Pm10),
-            ParticulateMatter2_5 = PollutantUtils.ParticulateMatter_25(item.Components.Pm2_5),
-            Ammonia = PollutantUtils.Ammonia(item.Components.Nh3)
-        };
+            using var client = new HttpClient();
+            var url = $"{baseUrl}/data/2.5/air_pollution?lat={location.Latitude}&lon={location.Longitude}&appid={_apiKey}";            
+            var responseString = await client.GetStringAsync(url);
+
+            var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
+                ?? throw new Exception("Air quality index not found for this location");
+
+            return ApiAirQualityReading.ToReading(response);
+        });
+
+        return reading!;
     }
 
     private async Task<GlobalLocation> GetGlobalLocation(GeoLocation geoLocation)
     {
-        var url = $"http://api.openweathermap.org/geo/1.0/reverse?lat={geoLocation.Latitude}&lon={geoLocation.Longitude}&appid={_apiKey}";
-
         using var client = new HttpClient();
-
+        var url = $"{baseUrl}/geo/1.0/reverse?lat={geoLocation.Latitude}&lon={geoLocation.Longitude}&appid={_apiKey}";        
         var responseString = await client.GetStringAsync(url);
 
         var response = JsonConvert.DeserializeObject<List<ApiGlobalLocation>>(responseString)
@@ -99,14 +92,37 @@ public class DashboardService : IDashboardService
         using the built-in memory cache.
         TODO: Monthly background job that updates indexes every 3 months. 
         Urgent TODO: Ensure locations in database are all a minimum distance apart 
-        Urgent TODO: Delete all locations in database, add a name column, then re-import
-        Duplicate key error location id: ... */
+        Duplicate key error location id: 23505 */
 
-        var locationsForApi = new List<GeoLocation> { request.Centre };
+        using var client = new HttpClient();
 
-        var result = await _airQualityLocationRepository.GetAirQualityDataWithinBounds(request.Bounds.NorthEast, request.Bounds.SouthWest);
+        var centreReading = await _memoryCache.GetOrCreateAsync($"location({request.Centre.Latitude}:{request.Centre.Longitude})", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
 
-        var mapEntries = result.Readings.ConvertAll(r => new MapEntry
+            var url = $"{baseUrl}/data/2.5/air_pollution?lat={request.Centre.Latitude}&lon={request.Centre.Longitude}&appid={_apiKey}";
+            var response = await client.GetFromJsonAsync<ApiAirQualityReading>(url) 
+                ?? throw new Exception("Air quality index not found for this location");
+
+            return ApiAirQualityReading.ToReading(response);
+        });         
+
+        // Split bounds into cells where the lat/lng step represents the size of each cell.
+        var latSpan = request.Bounds.NorthEast.Latitude - request.Bounds.SouthWest.Latitude;
+        var lngSpan = request.Bounds.NorthEast.Longitude - request.Bounds.SouthWest.Longitude;
+        var gridSize = 10;
+        var latStep = latSpan / gridSize;
+        var lngStep = lngSpan / gridSize;
+
+        var airQualityData = await _airQualityLocationRepository.GetAirQualityDataWithinBounds(request.Bounds.NorthEast, request.Bounds.SouthWest, latStep, lngStep);
+        if (airQualityData.Count > 0)
+        {
+
+        }
+        var readingsData = airQualityData.Where(x => x.ReadingId.HasValue).ToList();
+        var missingData = airQualityData.Where(x => x.ReadingId is null).ToList();
+
+        var mapEntries = readingsData.ConvertAll(r => new MapEntry
         {
             AirQualityReading = new AirQualityReading
             {
@@ -123,20 +139,17 @@ public class DashboardService : IDashboardService
             }
         });
 
-        var missingLocations = result.MissingLocations.ConvertAll(x => new GeoLocation(x.Latitude, x.Longitude));
-        locationsForApi.AddRange(missingLocations);
-
+        var missingLocations = missingData.ConvertAll(x => new GeoLocation(x.Latitude, x.Longitude)); 
         var responseTasksByLocation = new Dictionary<GeoLocation, Task<string>>();
         var readingsToCache = new List<AirQualityReadingEntity>();
-        using var client = new HttpClient();        
 
-        ProcessLocations(locationsForApi, responseTasksByLocation, client);
+        ProcessLocations(missingLocations, responseTasksByLocation, client);
 
         await Task.WhenAll(responseTasksByLocation.Values);
 
-        foreach (var location in locationsForApi)
+        foreach (var location in missingLocations)
         {
-            var locationEntity = result.MissingLocations.FirstOrDefault(x => x.Latitude ==  location.Latitude && x.Longitude == location.Longitude);
+            var locationEntity = missingData.FirstOrDefault(x => x.Latitude == location.Latitude && x.Longitude == location.Longitude);
 
             // Temporary until readings are cached
             //var responseString = "{\"coord\":{\"lon\":-2.3637,\"lat\":53.4541},\"list\":[{\"main\":{\"aqi\":2},\"components\":{\"co\":119.47,\"no\":0,\"no2\":4.88,\"o3\":68.24,\"so2\":0.81,\"pm2_5\":2.94,\"pm10\":3.35,\"nh3\":7.54},\"dt\":1746995138}]}";
@@ -144,27 +157,13 @@ public class DashboardService : IDashboardService
             var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
                 ?? throw new Exception("Air quality index not found for this location");
 
-            var item = response.List[0];
-
-            var reading = new AirQualityReading
-            {
-                Location = location,
-                Index = item.Main.Aqi,
-                CarbonMonoxide = PollutantUtils.CarbonMonoxide(item.Components.Co),
-                SulfurDioxide = PollutantUtils.SulfurDioxide(item.Components.So2),
-                NitrogenDioxide = PollutantUtils.NitrogenDioxide(item.Components.No2),
-                NitrogenOxide = PollutantUtils.NitrogenOxide(item.Components.No),
-                Ozone = PollutantUtils.Ozone(item.Components.O3),
-                ParticulateMatter10 = PollutantUtils.ParticulateMatter_10(item.Components.Pm10),
-                ParticulateMatter2_5 = PollutantUtils.ParticulateMatter_25(item.Components.Pm2_5),
-                Ammonia = PollutantUtils.Ammonia(item.Components.Nh3)
-            };
+            var reading = ApiAirQualityReading.ToReading(response);
 
             if (locationEntity is not null)
             {
                 var readingToCache = new AirQualityReadingEntity
                 {
-                    LocationId = locationEntity.Id,
+                    LocationId = locationEntity.LocationId,
                     Index = reading.Index,
                     CarbonMonoxide = reading.CarbonMonoxide.Concentration,
                     SulfurDioxide = reading.SulfurDioxide.Concentration,
@@ -187,13 +186,26 @@ public class DashboardService : IDashboardService
             mapEntries.Add(mapEntry);
         }
 
-        await _airQualityReadingRepository.AddRangeAsync(readingsToCache);
+        await _airQualityReadingRepository.InsertReadingMultiple(readingsToCache);
 
-        await _unitOfWork.CompleteAsync();
+        /*await _airQualityReadingRepository.AddRangeAsync(readingsToCache);    
+        
+        try
+        {
+            await _unitOfWork.CompleteAsync();
+        }        
+        catch
+        {
+            // Do Nothing
+        }*/
+
+        Console.WriteLine("Request finished");
+        Thread.Sleep(1000);
+        Console.WriteLine("Finished sleeping ..");
 
         return new MapEntriesView 
         { 
-            Centre = mapEntries[0],
+            Centre = new MapEntry { AirQualityReading = centreReading! },
             NearbyEntries = mapEntries.Skip(1).ToList()
         };
     }
@@ -203,13 +215,12 @@ public class DashboardService : IDashboardService
         Dictionary<GeoLocation, Task<string>> responseTasksByLocation,
         HttpClient client)
     {
-        foreach (var nearbyLocation in locations)
+        foreach (var location in locations)
         {
-            var url = $"http://api.openweathermap.org/data/2.5/air_pollution?lat={nearbyLocation.Latitude}&lon={nearbyLocation.Longitude}&appid={_apiKey}";
-
+            var url = $"{baseUrl}/data/2.5/air_pollution?lat={location.Latitude}&lon={location.Longitude}&appid={_apiKey}";
             var responseString = client.GetStringAsync(url);
 
-            responseTasksByLocation.Add(nearbyLocation, responseString);
+            responseTasksByLocation.Add(location, responseString);
         }
     }
 }

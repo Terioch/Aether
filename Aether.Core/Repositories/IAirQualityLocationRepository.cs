@@ -4,5 +4,5 @@ namespace Aether.Core.Repositories;
 
 public interface IAirQualityLocationRepository
 {
-    Task<DbAirQualityLocationData> GetAirQualityDataWithinBounds(GeoLocation northEast, GeoLocation southWest);
+    Task<List<DbAirQualityItem>> GetAirQualityDataWithinBounds(GeoLocation northEast, GeoLocation southWest, double latStep, double lngStep);
 }

@@ -1,4 +1,4 @@
-import { Icon, LatLng, LatLngBounds, Map as LeafletMap } from "leaflet";
+import { LatLng, LatLngBounds, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Fragment, useEffect, useState } from "react";
 import {
@@ -61,7 +61,7 @@ export default function Map({ geoLocation }: Props) {
 
     const northEast = bounds.getNorthEast();
     const southWest = bounds.getSouthWest();
-    console.log({ bounds });
+    console.log("Map changed", { bounds });
 
     const request: MapEntriesRequest = {
       centre: {
@@ -90,11 +90,9 @@ export default function Map({ geoLocation }: Props) {
   const MapEventHandler = () => {
     const map = useMapEvents({
       zoomend: () => {
-        console.log("Zoom level changed to:", map.getZoom(), map.getBounds());
         onMapChange(map.getZoom(), map.getBounds());
       },
       moveend: () => {
-        console.log("Moved", map.getZoom(), map.getBounds());
         onMapChange(map.getZoom(), map.getBounds());
       },
     });

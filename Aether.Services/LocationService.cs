@@ -19,34 +19,24 @@ public class LocationService : ILocationService
 
     public async Task CreateLocations()
     {
+        // 100 locations processed
         const string baseUrl = "http://geodb-free-service.wirefreethought.com/v1/geo/places?limit=10";
-        var offset = 10;
-        var batchSize = 10;
-        var allLocations = new List<LocationEntity>();
 
-        var client = new HttpClient();
+        var offset = 100;
+        var tasks = new List<Task<List<LocationEntity>>>();
+        var client = new HttpClient();        
 
-        while (offset < 100)
-        {
-            var tasks = new List<Task<List<LocationEntity>>>();           
-
-            for (var i = 1; i < batchSize; ++i)
-            {
-                var url = baseUrl + $"&offset={offset}";
-
-                tasks.Add(GetLocationsAsync(url, client));
-
-                offset += 10;
-            }
-
-            var locationResults = await Task.WhenAll(tasks);
-            var locations = locationResults.SelectMany(x => x);
-
-            allLocations.AddRange(locations);           
+        while (offset <= 90)
+        {    
+            var url = baseUrl + $"&offset={offset}";
+            tasks.Add(GetLocationsAsync(url, client));
+            offset += 10;
         }
 
-        await _locationRepository.AddRangeAsync(allLocations);
+        var results = await Task.WhenAll(tasks);
+        var locations = results.SelectMany(x => x);       
 
+        await _locationRepository.AddRangeAsync(locations);
         await _unitOfWork.CompleteAsync();
     }
 
@@ -58,6 +48,7 @@ public class LocationService : ILocationService
 
         return response.Data.ConvertAll(x => new LocationEntity
         {
+            Name = x.Name,
             Latitude = x.Latitude,
             Longitude = x.Longitude
         });
