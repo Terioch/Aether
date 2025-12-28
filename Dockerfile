@@ -1,28 +1,23 @@
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-
-# Copy all csproj files
-COPY Aether/*.csproj Aether/
-COPY Aether.Console/*.csproj Aether.Console/
-COPY Aether.Core/*.csproj Aether.Core/
-COPY Aether.Repositories/*.csproj Aether.Repositories/
-COPY Aether.Services/*.csproj Aether.Services/
-
-# Restore
-WORKDIR /src/Aether
-RUN dotnet restore
-
-# Copy everything
-WORKDIR /src
+COPY ["Aether/Aether.csproj", "Aether/"]
+COPY ["Aether/Aether.Console.csproj", "Aether/"]
+COPY ["Aether/AetherCore.csproj", "Aether/"]
+COPY ["Aether/Aether.Repositories.csproj", "Aether/"]
+RUN dotnet restore "Aether/Aether.Services.csproj"
 COPY . .
+WORKDIR "/src/Aether"
+RUN dotnet build "Aether.csproj" -c Release -o /app/build
 
-# Build
-WORKDIR /src/Aether
-RUN dotnet publish -c Release -o /app/publish
+FROM build AS publish
+RUN dotnet publish "Aether.csproj" -c Release -o /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM base AS final
 WORKDIR /app
-COPY --from=build /app/publish .
-EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
+COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "Aether.dll"]

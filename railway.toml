@@ -1,0 +1,7 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "./Aether/Dockerfile"
+
+[deploy]
+startCommand = "dotnet Aether.dll"
+restartPolicyType = "never"
