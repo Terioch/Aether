@@ -19,14 +19,14 @@ public class LocationService : ILocationService
 
     public async Task CreateLocations()
     {
-        // 100 locations processed
+        // 500 locations processed
         const string baseUrl = "http://geodb-free-service.wirefreethought.com/v1/geo/places?limit=10";
 
-        var offset = 100;
+        var offset = 200;
         var tasks = new List<Task<List<LocationEntity>>>();
         var client = new HttpClient();        
 
-        while (offset <= 90)
+        while (offset <= 990)
         {    
             var url = baseUrl + $"&offset={offset}";
             tasks.Add(GetLocationsAsync(url, client));

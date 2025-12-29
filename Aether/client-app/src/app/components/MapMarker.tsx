@@ -80,10 +80,16 @@ export default function MapMarker({
             ["Sulfur Dioxide", airQualityReading.sulfurDioxide.index],
             ["Nitrogen Oxide", airQualityReading.nitrogenOxide.index],
             ["Nitrogen Dioxide", airQualityReading.nitrogenDioxide.index],
-            ["PM10", airQualityReading.particulateMatter10.index],
-            ["PM2.5", airQualityReading.particulateMatter2_5.index],
+            [
+              "Particulate Matter 10",
+              airQualityReading.particulateMatter10.index,
+            ],
+            [
+              "Particulate Matter 2.5",
+              airQualityReading.particulateMatter2_5.index,
+            ],
             ["Ozone", airQualityReading.ozone.index],
-            ["CO", airQualityReading.carbonMonoxide.index],
+            ["Carbon Monoxide", airQualityReading.carbonMonoxide.index],
             ["Ammonia", airQualityReading.ammonia.index],
           ].map(([label, index], i) => (
             <div
