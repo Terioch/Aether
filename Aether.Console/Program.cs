@@ -1,7 +1,7 @@
 ﻿using Aether.Core;
 using Newtonsoft.Json;
 
-const string API_KEY = "dc35268d48eea7c36ca86dbc6e7ca697";
+const string API_KEY = "249874698345";
 
 var manchester = new GeoLocation(53.2844, -2.1443);
 var shanghai = new GeoLocation(31.23041600, 121.47370100);
