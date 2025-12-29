@@ -180,10 +180,6 @@ public class DashboardService : IDashboardService
 
         await _airQualityReadingRepository.InsertReadingMultiple(readingsToCache);
 
-        Console.WriteLine("Request finished");
-        Thread.Sleep(1000);
-        Console.WriteLine("Finished sleeping ..");
-
         return new MapEntriesView 
         { 
             Centre = new MapEntry { AirQualityReading = centreReading! },
