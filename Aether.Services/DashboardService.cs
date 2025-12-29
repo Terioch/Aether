@@ -87,12 +87,8 @@ public class DashboardService : IDashboardService
 
     public async Task<MapEntriesView> GetMapEntries(MapEntriesRequest request)
     {
-        /* TODO: Pollutants should be a list within AirQuality and have a name and possibly a unit field.
-        Urgent TODO: Cache air quality indexes in database to avoid querying openweathermap Could also cache indexes 
-        using the built-in memory cache.
-        TODO: Monthly background job that updates indexes every 3 months. 
-        Urgent TODO: Ensure locations in database are all a minimum distance apart 
-        Duplicate key error location id: 23505 */
+        /* TODOs: Pollutants should be a list within AirQuality and have a name and possibly a unit field.
+        Monthly background job that updates indexes every 3 months.  */
 
         using var client = new HttpClient();
 
@@ -115,10 +111,6 @@ public class DashboardService : IDashboardService
         var lngStep = lngSpan / gridSize;
 
         var airQualityData = await _airQualityLocationRepository.GetAirQualityDataWithinBounds(request.Bounds.NorthEast, request.Bounds.SouthWest, latStep, lngStep);
-        if (airQualityData.Count > 0)
-        {
-
-        }
         var readingsData = airQualityData.Where(x => x.ReadingId.HasValue).ToList();
         var missingData = airQualityData.Where(x => x.ReadingId is null).ToList();
 
@@ -187,17 +179,6 @@ public class DashboardService : IDashboardService
         }
 
         await _airQualityReadingRepository.InsertReadingMultiple(readingsToCache);
-
-        /*await _airQualityReadingRepository.AddRangeAsync(readingsToCache);    
-        
-        try
-        {
-            await _unitOfWork.CompleteAsync();
-        }        
-        catch
-        {
-            // Do Nothing
-        }*/
 
         Console.WriteLine("Request finished");
         Thread.Sleep(1000);
