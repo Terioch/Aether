@@ -27,7 +27,6 @@ async function getMapEntries(
       }
 
       const data = await res.json();
-      console.log({ nearbyEntries: data });
       resolve(data);
     } catch (error) {
       reject(error);
@@ -55,7 +54,6 @@ export default function Map({ geoLocation }: Props) {
 
     const northEast = bounds.getNorthEast();
     const southWest = bounds.getSouthWest();
-    console.log("Map changed", { bounds });
 
     const request: MapEntriesRequest = {
       centre: {
@@ -92,7 +90,6 @@ export default function Map({ geoLocation }: Props) {
     });
 
     setMap(map);
-
     return null;
   };
 
@@ -100,10 +97,10 @@ export default function Map({ geoLocation }: Props) {
     const northEast = bounds.getNorthEast();
     const southWest = bounds.getSouthWest();
     const center = bounds.getCenter();
-    console.log(center, {
-      lat: (northEast.lat - southWest.lat) / 2 + southWest.lat,
-      lng: (northEast.lng - southWest.lng) / 2 + southWest.lng,
-    });
+    // console.log(center, {
+    //   lat: (northEast.lat - southWest.lat) / 2 + southWest.lat,
+    //   lng: (northEast.lng - southWest.lng) / 2 + southWest.lng,
+    // });
 
     const request: MapEntriesRequest = {
       centre: {

@@ -1,4 +1,4 @@
-import { DivIcon, LatLng, marker } from "leaflet";
+import { DivIcon, LatLng } from "leaflet";
 import { Marker, Popup } from "react-leaflet";
 import { MapEntry } from "../models/map-entries-view";
 
@@ -60,6 +60,26 @@ export default function MapMarker({
     </div>
   `;
 
+  const pollutants: { label: string; index: number }[] = [
+    { label: "Sulfur Dioxide", index: airQualityReading.sulfurDioxide.index },
+    { label: "Nitrogen Oxide", index: airQualityReading.nitrogenOxide.index },
+    {
+      label: "Nitrogen Dioxide",
+      index: airQualityReading.nitrogenDioxide.index,
+    },
+    {
+      label: "Particulate Matter 10",
+      index: airQualityReading.particulateMatter10.index,
+    },
+    {
+      label: "Particulate Matter 2.5",
+      index: airQualityReading.particulateMatter2_5.index,
+    },
+    { label: "Ozone", index: airQualityReading.ozone.index },
+    { label: "Carbon Monoxide", index: airQualityReading.carbonMonoxide.index },
+    { label: "Ammonia", index: airQualityReading.ammonia.index },
+  ];
+
   return (
     <Marker
       position={position}
@@ -76,27 +96,15 @@ export default function MapMarker({
     >
       <Popup className="w-max p-2" closeButton={false}>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-800">
-          {[
-            ["Sulfur Dioxide", airQualityReading.sulfurDioxide.index],
-            ["Nitrogen Oxide", airQualityReading.nitrogenOxide.index],
-            ["Nitrogen Dioxide", airQualityReading.nitrogenDioxide.index],
-            [
-              "Particulate Matter 10",
-              airQualityReading.particulateMatter10.index,
-            ],
-            [
-              "Particulate Matter 2.5",
-              airQualityReading.particulateMatter2_5.index,
-            ],
-            ["Ozone", airQualityReading.ozone.index],
-            ["Carbon Monoxide", airQualityReading.carbonMonoxide.index],
-            ["Ammonia", airQualityReading.ammonia.index],
-          ].map(([label, index], i) => (
+          {pollutants.map(({ label, index }, i) => (
             <div
               key={i}
               className="flex items-center justify-between min-w-0 gap-2"
             >
-              <span className="text-gray-600 truncate whitespace-nowrap">
+              <span
+                className="text-gray-600 truncate whitespace-nowrap"
+                title={label}
+              >
                 {label}
               </span>
               <span
