@@ -19,8 +19,10 @@ export interface AirQualityReading {
 }
 
 export interface Pollutant {
+  name: string;
   index: number;
   concentration: number;
+  max: number;
 }
 
 export interface GeoLocation {
