@@ -1,6 +1,4 @@
-﻿using Aether.Core.Utils;
-
-namespace Aether.Core.Entities;
+﻿namespace Aether.Core.Entities;
 
 public class AirQualityReadingEntity
 {
