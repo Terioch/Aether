@@ -1,9 +1,7 @@
 using Aether.Core.Services;
 using Aether.Extensions;
 using Aether.Repositories;
-using Aether.Repositories.Configuration;
 using Aether.Services;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,12 +26,6 @@ builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddAetherRepositories(connections["aether"]);
 
 var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AetherContext>();
-    await db.Database.MigrateAsync();
-}
 
 // Configure the HTTP request pipeline.
 app.UseHttpsRedirection();

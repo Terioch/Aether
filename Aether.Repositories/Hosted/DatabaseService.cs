@@ -1,5 +1,5 @@
 ﻿using Aether.Repositories.Configuration;
-
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -18,7 +18,7 @@ public sealed class DatabaseService : IHostedService
     {
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AetherContext>();
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await context.Database.MigrateAsync(cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
