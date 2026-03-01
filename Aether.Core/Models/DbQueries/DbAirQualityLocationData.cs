@@ -20,6 +20,8 @@ public class DbAirQualityItem
 
     public int Index { get; set; }
 
+    public int Aqi { get; set; }
+
     public double SulfurDioxide { get; set; }
 
     public double NitrogenOxide { get; set; }
@@ -35,4 +37,6 @@ public class DbAirQualityItem
     public double CarbonMonoxide { get; set; }
 
     public double Ammonia { get; set; }
+
+    public DateTimeOffset LastUpdated { get; set; }
 }

@@ -2,12 +2,13 @@ import { LatLng, LatLngBounds, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Fragment, useEffect, useState } from "react";
 import { MapContainer, TileLayer, useMapEvents } from "react-leaflet";
+import { GeoLocation as AppGeoLocation } from "../models/geo-location";
 import { MapEntriesView, MapEntry } from "../models/map-entries-view";
-import { MapEntriesRequest } from "../requests/get-nearby-map-entries-request";
+import { MapEntriesViewRequest } from "../requests/map-entries-view-request";
 import MapMarker from "./MapMarker";
 
 async function getMapEntries(
-  request: MapEntriesRequest
+  request: MapEntriesViewRequest,
 ): Promise<MapEntriesView> {
   return new Promise(async (resolve, reject) => {
     try {
@@ -19,7 +20,7 @@ async function getMapEntries(
             "content-type": "application/json",
           },
           body: JSON.stringify(request),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -35,15 +36,19 @@ async function getMapEntries(
 }
 
 interface Props {
-  geoLocation: GeolocationPosition;
+  geoLocation: AppGeoLocation;
+  loadDashboardView: (
+    location: AppGeoLocation,
+    readingId?: number,
+  ) => Promise<void>;
 }
 
-export default function Map({ geoLocation }: Props) {
+export default function Map({ geoLocation, loadDashboardView }: Props) {
   const [map, setMap] = useState<LeafletMap>();
   const [mapCentreEntry, setMapCentreEntry] = useState<MapEntry>();
   const [nearbyMapEntries, setNearbyMapEntries] = useState<MapEntry[]>();
   const [mapCentre, setMapCentre] = useState<LatLng>(
-    new LatLng(geoLocation.coords.latitude, geoLocation.coords.longitude)
+    new LatLng(geoLocation.latitude, geoLocation.longitude),
   );
 
   useEffect(() => {
@@ -55,10 +60,10 @@ export default function Map({ geoLocation }: Props) {
     const northEast = bounds.getNorthEast();
     const southWest = bounds.getSouthWest();
 
-    const request: MapEntriesRequest = {
+    const request: MapEntriesViewRequest = {
       centre: {
-        latitude: geoLocation.coords.latitude,
-        longitude: geoLocation.coords.longitude,
+        latitude: geoLocation.latitude,
+        longitude: geoLocation.longitude,
       },
       zoom,
       bounds: {
@@ -102,7 +107,7 @@ export default function Map({ geoLocation }: Props) {
     //   lng: (northEast.lng - southWest.lng) / 2 + southWest.lng,
     // });
 
-    const request: MapEntriesRequest = {
+    const request: MapEntriesViewRequest = {
       centre: {
         latitude: center.lat,
         longitude: center.lng,
@@ -141,7 +146,11 @@ export default function Map({ geoLocation }: Props) {
       />
 
       {mapCentreEntry && (
-        <MapMarker position={mapCentre} entry={mapCentreEntry} />
+        <MapMarker
+          position={mapCentre}
+          entry={mapCentreEntry}
+          loadDashboardView={loadDashboardView}
+        />
       )}
 
       {nearbyMapEntries?.map((mapEntry, idx) => (
@@ -150,10 +159,11 @@ export default function Map({ geoLocation }: Props) {
             position={
               new LatLng(
                 mapEntry.airQualityReading.location.latitude,
-                mapEntry.airQualityReading.location.longitude
+                mapEntry.airQualityReading.location.longitude,
               )
             }
             entry={mapEntry}
+            loadDashboardView={loadDashboardView}
           />
         </Fragment>
       ))}

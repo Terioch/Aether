@@ -1,4 +1,6 @@
-﻿namespace Aether.Core.Entities;
+﻿using Aether.Core.Utils;
+
+namespace Aether.Core.Entities;
 
 public class AirQualityReadingEntity
 {
@@ -7,6 +9,8 @@ public class AirQualityReadingEntity
     public int LocationId { get; set; }
 
     public int Index { get; set; }
+
+    public int Aqi { get; set; }
 
     public double SulfurDioxide { get; set; }
 
@@ -23,6 +27,8 @@ public class AirQualityReadingEntity
     public double CarbonMonoxide { get; set; }
 
     public double Ammonia { get; set; }
+
+    public DateTimeOffset LastUpdated { get; set; }
 
     #region navigation properties
 

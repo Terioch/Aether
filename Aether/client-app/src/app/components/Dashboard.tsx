@@ -4,78 +4,87 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { DashboardView } from "../models/dashboard-view";
 import { PollutantCard } from "./PollutantCard";
-
-async function getView(position: GeolocationPosition): Promise<DashboardView> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`,
-      );
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch pollution data");
-      }
-
-      const data = await res.json();
-      resolve(data);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
+import DashboardClient from "../client/dashboard-client";
+import { GeoLocation as AppGeoLocation } from "../models/geo-location";
+import { toDateLong } from "../utils/date";
 
 export default function Dashboard() {
   const [view, setView] = useState<DashboardView>();
-
-  const [geoLocation, setGeoLocation] = useState<GeolocationPosition>();
+  const [geoLocation, setGeoLocation] = useState<AppGeoLocation>();
+  const client = new DashboardClient();
 
   const Map = dynamic(() => import("./Map"), { ssr: false });
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((position) => {
-      setGeoLocation(position);
-      getView(position).then((res) => {
-        setView(res);
-      });
+      const location = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+
+      setGeoLocation(location);
+      loadDashboardView(location);
     });
   }, []);
 
-  // Helper function to get AQI status
+  const loadDashboardView = async (
+    location: AppGeoLocation,
+    readingId?: number,
+  ) => {
+    const res = await client.getDashboardView({
+      readingId,
+      location,
+    });
+    setView(res);
+  };
+
   const getAqiStatus = () => {
     if (aqi <= 50)
       return {
         label: "Good",
-        color: "emerald",
-        description: "Air quality is excellent",
+        bgColour: "bg-emerald-500",
+        textColour: "text-emerald-400",
+        description:
+          "Air quality is excellent. It's a great day for outdoor activities.",
       };
     if (aqi <= 100)
       return {
         label: "Moderate",
-        color: "amber",
-        description: "Generally acceptable air quality",
+        bgColour: "bg-amber-500",
+        textColour: "text-amber-400",
+        description:
+          "Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution",
       };
     if (aqi <= 150)
       return {
         label: "Unhealthy for Sensitive Groups",
-        color: "orange",
-        description: "Sensitive groups may experience health effects",
+        bgColour: "bg-orange-500",
+        textColour: "text-orange-400",
+        description:
+          "Members of sensitive groups may experience health effects. The general public is less likely to be affected",
       };
     if (aqi <= 200)
       return {
         label: "Unhealthy",
-        color: "red",
-        description: "Everyone may begin to experience health effects",
+        bgColour: "bg-red-500",
+        textColour: "text-red-400",
+        description:
+          "Some members of the general public may experience health effects; members of sensitive groups may experience more serious health effects",
       };
     if (aqi <= 300)
       return {
         label: "Very Unhealthy",
-        color: "red",
-        description: "Health alert: everyone may experience serious effects",
+        bgColour: "bg-purple-500",
+        textColour: "text-purple-400",
+        description:
+          "Health alert: everyone is likely to experience serious health effects",
       };
     return {
       label: "Hazardous",
-      color: "red",
-      description: "Emergency conditions: entire population affected",
+      bgColour: "bg-maroon-500",
+      textColour: "text-maroon-400",
+      description:
+        "Health warning of emergency conditions: everyone may experience severe health effects",
     };
   };
 
@@ -89,7 +98,7 @@ export default function Dashboard() {
     );
   }
 
-  const aqi = view.airQualityReading.index;
+  const aqi = view.airQualityReading.aqi;
   const aqiStatus = getAqiStatus();
 
   return (
@@ -97,8 +106,8 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header Section */}
         <div className="animate-fadeIn">
-          <div className="flex justify-between items-start mb-2">
-            <h1 className="font-bold text-5xl md:text-6xl bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+          <div className="flex justify-between items-start mb-1">
+            <h1 className="h-[65px] font-bold text-5xl md:text-6xl bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
               Air Quality
             </h1>
             <div className="flex items-center gap-2 text-slate-400 font-mono text-sm">
@@ -110,14 +119,7 @@ export default function Dashboard() {
             {view.location.state}, {view.location.country}
           </h2>
           <p className="text-slate-500 text-sm font-mono mt-2">
-            Last updated:{" "}
-            {new Date().toLocaleString("en-GB", {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
+            Last updated: {toDateLong(view.airQualityReading.lastUpdated)}
           </p>
         </div>
 
@@ -125,13 +127,15 @@ export default function Dashboard() {
         <div
           className={`bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700/50 rounded-3xl p-8 relative overflow-hidden animate-scaleIn shadow-2xl`}
         >
-          <div className="absolute top-0 right-0 w-96 h-96 bg-${aqiStatus.color}-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div
+            className={`absolute top-0 right-0 w-96 h-96 ${aqiStatus.bgColour} opacity-10 rounded-full blur-3xl animate-pulse`}
+          ></div>
 
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
               <div className="flex items-baseline gap-4">
                 <div
-                  className={`text-7xl md:text-8xl font-bold text-${aqiStatus.color}-400`}
+                  className={`text-7xl md:text-8xl font-bold ${aqiStatus.textColour}`}
                 >
                   {aqi}
                 </div>
@@ -140,22 +144,15 @@ export default function Dashboard() {
 
               <div className="text-left md:text-right">
                 <div
-                  className={`inline-block px-5 py-2 rounded-full bg-${aqiStatus.color}-500 text-white font-semibold text-sm uppercase tracking-wide shadow-lg`}
+                  className={`inline-block px-5 py-2 rounded-full ${aqiStatus.bgColour} text-white font-semibold text-sm uppercase tracking-wide shadow-lg`}
                 >
                   {aqiStatus.label}
                 </div>
-                <p className="text-slate-400 text-sm mt-2">
-                  {aqiStatus.description}
-                </p>
               </div>
             </div>
 
             <p className="text-slate-300 leading-relaxed max-w-3xl">
-              {aqi <= 50
-                ? "Air quality is excellent. It's a great day for outdoor activities."
-                : aqi <= 100
-                  ? "Air quality is acceptable for most people. However, sensitive groups may experience minor symptoms from long-term exposure."
-                  : "Air quality is declining. Sensitive groups should consider reducing prolonged outdoor exertion."}
+              {aqiStatus.description}
             </p>
           </div>
         </div>
@@ -163,7 +160,10 @@ export default function Dashboard() {
         {/* Map Section */}
         {geoLocation && (
           <div className="rounded-3xl overflow-hidden border border-slate-800 shadow-2xl animate-fadeIn">
-            <Map geoLocation={geoLocation} />
+            <Map
+              geoLocation={geoLocation}
+              loadDashboardView={loadDashboardView}
+            />
           </div>
         )}
 

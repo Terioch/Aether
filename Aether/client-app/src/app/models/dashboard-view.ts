@@ -1,3 +1,4 @@
+import { GeoLocation } from "./geo-location";
 import { GlobalLocation } from "./global-location";
 
 export interface DashboardView {
@@ -6,8 +7,10 @@ export interface DashboardView {
 }
 
 export interface AirQualityReading {
+  id: number;
   location: GeoLocation;
   index: number;
+  aqi: number;
   sulfurDioxide: Pollutant;
   nitrogenOxide: Pollutant;
   nitrogenDioxide: Pollutant;
@@ -16,6 +19,7 @@ export interface AirQualityReading {
   ozone: Pollutant;
   carbonMonoxide: Pollutant;
   ammonia: Pollutant;
+  lastUpdated: string;
 }
 
 export interface Pollutant {
@@ -23,9 +27,4 @@ export interface Pollutant {
   index: number;
   concentration: number;
   max: number;
-}
-
-export interface GeoLocation {
-  latitude: number;
-  longitude: number;
 }

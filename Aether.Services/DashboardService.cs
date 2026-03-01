@@ -2,6 +2,7 @@
 using Aether.Core.Entities;
 using Aether.Core.Models;
 using Aether.Core.Models.Api;
+using Aether.Core.Models.DbQueries;
 using Aether.Core.Repositories;
 using Aether.Core.Requests;
 using Aether.Core.Services;
@@ -9,7 +10,6 @@ using Aether.Core.Utils;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
-using System.Net.Http.Json;
 
 namespace Aether.Services;
 
@@ -34,11 +34,11 @@ public class DashboardService : IDashboardService
         _memoryCache = memoryCache;
     }
 
-    public async Task<DashboardView> GetDashboardView(GeoLocation geoLocation)
+    public async Task<DashboardView> GetDashboardView(DashboardViewRequest request)
     {
         //var manchester = new GeoLocation(53.2844, -2.1443);
-        var index = await GetAirQualityIndex(geoLocation);
-        var location = await GetGlobalLocation(geoLocation);
+        var location = await GetGlobalLocation(request.Location);
+        var index = await GetAirQualityReading(request, location);
 
         return new DashboardView
         {
@@ -47,61 +47,161 @@ public class DashboardService : IDashboardService
         };
     }
 
-    private async Task<AirQualityReading> GetAirQualityIndex(GeoLocation location)
+    private async Task<AirQualityReading> GetAirQualityReading(DashboardViewRequest request, GlobalLocation globalLocation)
     {
-        var reading = await _memoryCache.GetOrCreateAsync($"location({location.Latitude}:{location.Longitude})", async entry =>
+        /* TODO: Fetch reading from database or api if not present and update reading if more than 1 day old
+         Add last updated column to readings and display on UI
+         */
+        var reading = await _memoryCache.GetOrCreateAsync($"reading_location({request.Location.Latitude}:{request.Location.Longitude})", async entry =>
         {
-            using var client = new HttpClient();
-            var url = $"{baseUrl}/data/2.5/air_pollution?lat={location.Latitude}&lon={location.Longitude}&appid={_apiKey}";            
-            var responseString = await client.GetStringAsync(url);
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
 
-            var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
-                ?? throw new Exception("Air quality index not found for this location");
+            var (readingEntity, locationEntity) = await TryGetAirQualityReadingAndLocation(request.ReadingId, request.Location, globalLocation);
+            
+            if (locationEntity is null)
+            {
+                locationEntity = new LocationEntity
+                {
+                    Name = globalLocation.City,
+                    Latitude = request.Location.Latitude,
+                    Longitude = request.Location.Longitude
+                };
 
-            return ApiAirQualityReading.ToReading(response);
+                await _locationRepository.AddAsync(locationEntity);
+                await _unitOfWork.CompleteAsync();
+            }
+            
+            if (readingEntity is null)
+            {
+                var reading = await GetAirQualityReadingFromApi(request.Location);      
+                
+                readingEntity = new AirQualityReadingEntity
+                {
+                    LocationId = locationEntity.Id,
+                    Index = reading.Index,
+                    Aqi = reading.Aqi,
+                    CarbonMonoxide = reading.CarbonMonoxide.Concentration,
+                    SulfurDioxide = reading.SulfurDioxide.Concentration,
+                    NitrogenDioxide = reading.NitrogenDioxide.Concentration,
+                    NitrogenOxide = reading.NitrogenOxide.Concentration,
+                    Ozone = reading.Ozone.Concentration,
+                    ParticulateMatter10 = reading.ParticulateMatter10.Concentration,
+                    ParticulateMatter2_5 = reading.ParticulateMatter2_5.Concentration,
+                    Ammonia = reading.Ammonia.Concentration,
+                    LastUpdated = reading.LastUpdated,
+                };
+
+                await _airQualityReadingRepository.AddAsync(readingEntity);
+                await _unitOfWork.CompleteAsync();
+
+                reading.Id = readingEntity.Id;
+                return reading;
+            }
+            
+            // Update if reading is more than a day old
+            if (DateTimeOffset.UtcNow > readingEntity.LastUpdated.AddDays(1))
+            {
+                var reading = await GetAirQualityReadingFromApi(request.Location);
+
+                readingEntity.Index = reading.Index;
+                readingEntity.Aqi = reading.Aqi;
+                readingEntity.CarbonMonoxide = reading.CarbonMonoxide.Concentration;
+                readingEntity.CarbonMonoxide = reading.SulfurDioxide.Concentration;
+                readingEntity.NitrogenDioxide = reading.NitrogenDioxide.Concentration;
+                readingEntity.NitrogenOxide = reading.NitrogenOxide.Concentration;
+                readingEntity.Ozone = reading.Ozone.Concentration;
+                readingEntity.ParticulateMatter10 = reading.ParticulateMatter10.Concentration;
+                readingEntity.ParticulateMatter2_5 = reading.ParticulateMatter2_5.Concentration;
+                readingEntity.Ammonia = reading.Ammonia.Concentration;
+
+                await _unitOfWork.CompleteAsync();
+
+                reading.Id = readingEntity.Id;
+                return reading;
+            }
+
+            return new AirQualityReading
+            {
+                Id = readingEntity.Id,
+                Location = new GeoLocation(readingEntity.Location!.Latitude, readingEntity.Location.Longitude),
+                Index = readingEntity.Index,
+                Aqi = readingEntity.Aqi,
+                CarbonMonoxide = PollutantUtils.CarbonMonoxide(readingEntity.CarbonMonoxide),
+                SulfurDioxide = PollutantUtils.SulfurDioxide(readingEntity.SulfurDioxide),
+                NitrogenDioxide = PollutantUtils.NitrogenDioxide(readingEntity.NitrogenDioxide),
+                NitrogenOxide = PollutantUtils.NitrogenOxide(readingEntity.NitrogenOxide),
+                Ozone = PollutantUtils.Ozone(readingEntity.Ozone),
+                ParticulateMatter10 = PollutantUtils.ParticulateMatter_10(readingEntity.ParticulateMatter10),
+                ParticulateMatter2_5 = PollutantUtils.ParticulateMatter_25(readingEntity.ParticulateMatter2_5),
+                Ammonia = PollutantUtils.Ammonia(readingEntity.Ammonia),
+                LastUpdated = readingEntity.LastUpdated
+            };
         });
 
         return reading!;
     }
 
-    private async Task<GlobalLocation> GetGlobalLocation(GeoLocation geoLocation)
+    private async Task<(AirQualityReadingEntity?, LocationEntity?)> TryGetAirQualityReadingAndLocation(int? readingId, GeoLocation location, GlobalLocation globalLocation)
     {
-        using var client = new HttpClient();
-        var url = $"{baseUrl}/geo/1.0/reverse?lat={geoLocation.Latitude}&lon={geoLocation.Longitude}&appid={_apiKey}";        
-        var responseString = await client.GetStringAsync(url);
-
-        var response = JsonConvert.DeserializeObject<List<ApiGlobalLocation>>(responseString)
-            ?? throw new Exception("Air quality index not found for this location");
-
-        var result = response.FirstOrDefault() ?? throw new Exception($"Location was not found for lat: {geoLocation.Latitude}, lon: {geoLocation.Longitude}");
-
-        return new GlobalLocation
+        AirQualityReadingEntity? readingEntity;
+        LocationEntity? locationEntity;
+        if (readingId.HasValue)
         {
-            Country = result.Country,
-            State = result.State,
-            City = result.Name,
-            Latitude = result.Latitude,
-            Longitude = result.Longitude,
-        };
+
+            readingEntity = await _airQualityReadingRepository.GetAsync(readingId.Value);
+            if (readingEntity is null)
+                return (readingEntity, null);
+
+            locationEntity = await _locationRepository.GetAsync(readingEntity.LocationId);
+
+            return (readingEntity, locationEntity);
+        }
+
+        locationEntity = await _locationRepository.GetByName(globalLocation.City);
+        if (locationEntity is null)
+            return (null, null);
+
+        readingEntity = await _airQualityReadingRepository.GetByLocation(locationEntity.Latitude, locationEntity.Longitude);
+
+        return (readingEntity, locationEntity);
     }
 
-    public async Task<MapEntriesView> GetMapEntries(MapEntriesRequest request)
+    private async Task<GlobalLocation> GetGlobalLocation(GeoLocation geoLocation)
     {
-        /* TODOs: Pollutants should be a list within AirQuality and have a name and possibly a unit field.
-        Monthly background job that updates indexes every 3 months.  */
-
-        using var client = new HttpClient();
-
-        var centreReading = await _memoryCache.GetOrCreateAsync($"location({request.Centre.Latitude}:{request.Centre.Longitude})", async entry =>
+        var location = await _memoryCache.GetOrCreateAsync($"location({geoLocation.Latitude}:{geoLocation.Longitude})", async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
+            using var client = new HttpClient();
+            var url = $"{baseUrl}/geo/1.0/reverse?lat={geoLocation.Latitude}&lon={geoLocation.Longitude}&appid={_apiKey}";
+            var responseString = await client.GetStringAsync(url);
 
-            var url = $"{baseUrl}/data/2.5/air_pollution?lat={request.Centre.Latitude}&lon={request.Centre.Longitude}&appid={_apiKey}";
-            var response = await client.GetFromJsonAsync<ApiAirQualityReading>(url) 
+            var response = JsonConvert.DeserializeObject<List<ApiGlobalLocation>>(responseString)
                 ?? throw new Exception("Air quality index not found for this location");
 
-            return ApiAirQualityReading.ToReading(response);
-        });         
+            var result = response.FirstOrDefault() ?? throw new Exception($"Location was not found for lat: {geoLocation.Latitude}, lon: {geoLocation.Longitude}");
+
+            return new GlobalLocation
+            {
+                Country = result.Country,
+                State = result.State,
+                City = result.Name,
+                Latitude = result.Latitude,
+                Longitude = result.Longitude,
+            };
+        });
+
+        return location!;
+    }
+
+    public async Task<MapEntriesView> GetMapEntries(MapEntriesViewRequest request)
+    {
+        /* TODOs:
+        Monthly background job that updates indexes every 3 months.  
+        */
+        var centreReading = await _memoryCache.GetOrCreateAsync($"reading_location({request.Centre.Latitude}:{request.Centre.Longitude})", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
+            return await GetAirQualityReadingFromApi(request.Centre);
+        });
 
         // Split bounds into cells where the lat/lng step represents the size of each cell.
         var latSpan = request.Bounds.NorthEast.Latitude - request.Bounds.SouthWest.Latitude;
@@ -118,6 +218,7 @@ public class DashboardService : IDashboardService
         {
             AirQualityReading = new AirQualityReading
             {
+                Id = r.ReadingId!.Value,
                 Location = new(r.Latitude, r.Longitude),
                 Index = r.Index,
                 CarbonMonoxide = PollutantUtils.CarbonMonoxide(r.CarbonMonoxide),
@@ -127,58 +228,85 @@ public class DashboardService : IDashboardService
                 Ozone = PollutantUtils.Ozone(r.Ozone),
                 ParticulateMatter10 = PollutantUtils.ParticulateMatter_10(r.ParticulateMatter10),
                 ParticulateMatter2_5 = PollutantUtils.ParticulateMatter_25(r.ParticulateMatter2_5),
-                Ammonia = PollutantUtils.Ammonia(r.Ammonia)
+                Ammonia = PollutantUtils.Ammonia(r.Ammonia),
+                LastUpdated = r.LastUpdated
             }
         });
 
-        var missingLocations = missingData.ConvertAll(x => new GeoLocation(x.Latitude, x.Longitude)); 
-        var responseTasksByLocation = new Dictionary<GeoLocation, Task<string>>();
-        var readingsToCache = new List<AirQualityReadingEntity>();
-
-        ProcessLocations(missingLocations, responseTasksByLocation, client);
-
-        await Task.WhenAll(responseTasksByLocation.Values);
-
-        foreach (var location in missingLocations)
+        if (missingData.Count > 0)
         {
-            var locationEntity = missingData.FirstOrDefault(x => x.Latitude == location.Latitude && x.Longitude == location.Longitude);
+            var responseTasksByLocation = new Dictionary<int, Task<string>>();
+            var readingsToCache = new List<AirQualityReadingEntity>();
+            var locationIds = await _locationRepository.GetAllIds();
 
-            // Temporary until readings are cached
-            //var responseString = "{\"coord\":{\"lon\":-2.3637,\"lat\":53.4541},\"list\":[{\"main\":{\"aqi\":2},\"components\":{\"co\":119.47,\"no\":0,\"no2\":4.88,\"o3\":68.24,\"so2\":0.81,\"pm2_5\":2.94,\"pm10\":3.35,\"nh3\":7.54},\"dt\":1746995138}]}";
-            var responseString = responseTasksByLocation[location].Result;
-            var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
-                ?? throw new Exception("Air quality index not found for this location");
+            ProcessLocations(missingData, responseTasksByLocation);
 
-            var reading = ApiAirQualityReading.ToReading(response);
+            await Task.WhenAll(responseTasksByLocation.Values);
 
-            if (locationEntity is not null)
+            foreach (var item in missingData)
             {
-                var readingToCache = new AirQualityReadingEntity
+                // Temporary until readings are cached
+                //var responseString = "{\"coord\":{\"lon\":-2.3637,\"lat\":53.4541},\"list\":[{\"main\":{\"aqi\":2},\"components\":{\"co\":119.47,\"no\":0,\"no2\":4.88,\"o3\":68.24,\"so2\":0.81,\"pm2_5\":2.94,\"pm10\":3.35,\"nh3\":7.54},\"dt\":1746995138}]}";
+                var responseString = responseTasksByLocation[item.LocationId].Result;
+                var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
+                    ?? throw new Exception("Air quality index not found for this location");
+
+                var reading = ApiAirQualityReading.ToReading(response);
+
+                if (item is not null && !locationIds.Contains(item.LocationId))
                 {
-                    LocationId = locationEntity.LocationId,
-                    Index = reading.Index,
-                    CarbonMonoxide = reading.CarbonMonoxide.Concentration,
-                    SulfurDioxide = reading.SulfurDioxide.Concentration,
-                    NitrogenDioxide = reading.NitrogenDioxide.Concentration,
-                    NitrogenOxide = reading.NitrogenOxide.Concentration,
-                    Ozone = reading.Ozone.Concentration,
-                    ParticulateMatter10 = reading.ParticulateMatter10.Concentration,
-                    ParticulateMatter2_5 = reading.ParticulateMatter2_5.Concentration,
-                    Ammonia = reading.Ammonia.Concentration
+                    var readingToCache = new AirQualityReadingEntity
+                    {
+                        LocationId = item.LocationId,
+                        Index = reading.Index,
+                        Aqi = reading.Aqi,
+                        CarbonMonoxide = reading.CarbonMonoxide.Concentration,
+                        SulfurDioxide = reading.SulfurDioxide.Concentration,
+                        NitrogenDioxide = reading.NitrogenDioxide.Concentration,
+                        NitrogenOxide = reading.NitrogenOxide.Concentration,
+                        Ozone = reading.Ozone.Concentration,
+                        ParticulateMatter10 = reading.ParticulateMatter10.Concentration,
+                        ParticulateMatter2_5 = reading.ParticulateMatter2_5.Concentration,
+                        Ammonia = reading.Ammonia.Concentration,
+                        LastUpdated = reading.LastUpdated,
+                    };
+
+                    readingsToCache.Add(readingToCache);
+                }
+            }
+
+            //await _airQualityReadingRepository.InsertReadingMultiple(readingsToCache);
+
+            await _airQualityReadingRepository.AddRangeAsync(readingsToCache);
+            await _unitOfWork.CompleteAsync();
+
+            foreach (var readingEntity in readingsToCache)
+            {
+                var item = missingData.First(x => x.LocationId == readingEntity.LocationId);
+
+                var reading = new AirQualityReading
+                {
+                    Id = readingEntity.Id,
+                    Location = new GeoLocation(item.Latitude, item.Longitude),
+                    Index = readingEntity.Index,
+                    Aqi = readingEntity.Aqi,
+                    CarbonMonoxide = PollutantUtils.CarbonMonoxide(readingEntity.CarbonMonoxide),
+                    SulfurDioxide = PollutantUtils.SulfurDioxide(readingEntity.SulfurDioxide),
+                    NitrogenDioxide = PollutantUtils.NitrogenDioxide(readingEntity.NitrogenDioxide),
+                    NitrogenOxide = PollutantUtils.NitrogenOxide(readingEntity.NitrogenOxide),
+                    Ozone = PollutantUtils.Ozone(readingEntity.Ozone),
+                    ParticulateMatter10 = PollutantUtils.ParticulateMatter_10(readingEntity.ParticulateMatter10),
+                    ParticulateMatter2_5 = PollutantUtils.ParticulateMatter_25(readingEntity.ParticulateMatter2_5),
+                    Ammonia = PollutantUtils.Ammonia(readingEntity.Ammonia),
+                    LastUpdated = readingEntity.LastUpdated
                 };
 
-                readingsToCache.Add(readingToCache);
-            }          
-
-            var mapEntry = new MapEntry
-            {
-                AirQualityReading = reading
-            };
-
-            mapEntries.Add(mapEntry);
-        }
-
-        await _airQualityReadingRepository.InsertReadingMultiple(readingsToCache);
+                mapEntries.Add(new MapEntry
+                {
+                    AirQualityReading = reading
+                });
+            }
+        }        
 
         return new MapEntriesView 
         { 
@@ -187,17 +315,29 @@ public class DashboardService : IDashboardService
         };
     }
 
-    private void ProcessLocations(
-        List<GeoLocation> locations,
-        Dictionary<GeoLocation, Task<string>> responseTasksByLocation,
-        HttpClient client)
+    private async Task<AirQualityReading> GetAirQualityReadingFromApi(GeoLocation location)
     {
-        foreach (var location in locations)
+        var client = new HttpClient();
+        var url = $"{baseUrl}/data/2.5/air_pollution?lat={location.Latitude}&lon={location.Longitude}&appid={_apiKey}";
+        var responseString = await client.GetStringAsync(url);
+
+        var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
+            ?? throw new Exception("Air quality index not found for this location");
+
+        return ApiAirQualityReading.ToReading(response);
+    }
+
+    private void ProcessLocations(
+        List<DbAirQualityItem> items,
+        Dictionary<int, Task<string>> responseTasksByLocation)
+    {
+        var client = new HttpClient();
+        foreach (var item in items)
         {
-            var url = $"{baseUrl}/data/2.5/air_pollution?lat={location.Latitude}&lon={location.Longitude}&appid={_apiKey}";
+            var url = $"{baseUrl}/data/2.5/air_pollution?lat={item.Latitude}&lon={item.Longitude}&appid={_apiKey}";
             var responseString = client.GetStringAsync(url);
 
-            responseTasksByLocation.Add(location, responseString);
+            responseTasksByLocation.Add(item.LocationId, responseString);
         }
     }
 }

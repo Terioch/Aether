@@ -11,11 +11,20 @@ namespace Aether.Core.Models.Api
         public static AirQualityReading ToReading(ApiAirQualityReading apiReading)
         {
             var item = apiReading.List[0];
+            var aqi = AqiCalculation.ComputeAqi(
+                item.Components.Pm2_5,
+                item.Components.Pm10, 
+                item.Components.O3,
+                item.Components.Co, 
+                item.Components.No2, 
+                item.Components.So2
+            );
 
             return new AirQualityReading
             {
                 Location = new GeoLocation(apiReading.Coord.Lat, apiReading.Coord.Lon),
                 Index = item.Main.Aqi,
+                Aqi = aqi,
                 CarbonMonoxide = PollutantUtils.CarbonMonoxide(item.Components.Co),
                 SulfurDioxide = PollutantUtils.SulfurDioxide(item.Components.So2),
                 NitrogenDioxide = PollutantUtils.NitrogenDioxide(item.Components.No2),
@@ -23,7 +32,8 @@ namespace Aether.Core.Models.Api
                 Ozone = PollutantUtils.Ozone(item.Components.O3),
                 ParticulateMatter10 = PollutantUtils.ParticulateMatter_10(item.Components.Pm10),
                 ParticulateMatter2_5 = PollutantUtils.ParticulateMatter_25(item.Components.Pm2_5),
-                Ammonia = PollutantUtils.Ammonia(item.Components.Nh3)
+                Ammonia = PollutantUtils.Ammonia(item.Components.Nh3),
+                LastUpdated = DateTimeOffset.UtcNow,
             };
         }
     }

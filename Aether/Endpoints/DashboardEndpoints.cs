@@ -9,16 +9,16 @@ namespace Aether.Endpoints
     {
         public void MapEndpoints(IEndpointRouteBuilder app)
         {
-            app.MapGet("api/dashboard", GetDashboard);
+            app.MapPost("api/dashboard", GetDashboard);
             app.MapPost("api/dashboard/map-entries", GetMapEntries);
         }
 
-        private static async Task<DashboardView> GetDashboard([AsParameters] GeoLocation geoLocation, IDashboardService service)
+        private static async Task<DashboardView> GetDashboard(DashboardViewRequest request, IDashboardService service)
         {
-            return await service.GetDashboardView(geoLocation);
+            return await service.GetDashboardView(request);
         }
 
-        private static async Task<MapEntriesView> GetMapEntries(MapEntriesRequest parameters, IDashboardService service)
+        private static async Task<MapEntriesView> GetMapEntries(MapEntriesViewRequest parameters, IDashboardService service)
         {
             return await service.GetMapEntries(parameters);
         }

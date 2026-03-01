@@ -1,6 +1,6 @@
 ﻿namespace Aether.Core.Requests;
 
-public sealed record MapEntriesRequest
+public sealed record MapEntriesViewRequest
 {
     public required GeoLocation Centre { get; set; }
 

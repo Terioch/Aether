@@ -11,9 +11,19 @@ namespace Aether.Repositories
     public class LocationRepository(AetherContext context, IAetherConnectionFactory connectionFactory) 
         : BaseRepository<LocationEntity, int>(context, connectionFactory), ILocationRepository
     {
+        public Task<LocationEntity?> GetByName(string name)
+        {
+            return _entities.FirstOrDefaultAsync(x => x.Name == name);
+        }
+
         public Task<LocationEntity?> GetByLatLng(double latitude, double longitude)
         {
             return _entities.FirstOrDefaultAsync(x => x.Latitude == latitude && x.Longitude == longitude);
+        }
+
+        public Task<HashSet<int>> GetAllIds()
+        {
+            return _entities.Select(x => x.Id).ToHashSetAsync();
         }
 
         public async Task<List<GeoLocation>> GetAllWithinBounds(GeoLocation northEast, GeoLocation southWest)

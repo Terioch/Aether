@@ -1,6 +1,6 @@
-import { GeoLocation } from "../models/air-quality";
+import { GeoLocation } from "../models/geo-location";
 
-export interface MapEntriesRequest {
+export interface MapEntriesViewRequest {
   centre: GeoLocation;
   zoom: number;
   bounds: MapBounds;

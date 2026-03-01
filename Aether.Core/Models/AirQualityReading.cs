@@ -4,9 +4,13 @@ namespace Aether.Core
 {
     public class AirQualityReading
     {
+        public int Id { get; set; }
+
         public required GeoLocation Location { get; set; }
 
         public int Index { get; set; }
+
+        public int Aqi { get; set; }
 
         public required Pollutant SulfurDioxide { get; set; }
 
@@ -23,6 +27,8 @@ namespace Aether.Core
         public required Pollutant CarbonMonoxide { get; set; }
 
         public required Pollutant Ammonia { get; set; }
+
+        public DateTimeOffset LastUpdated { get; set; } = DateTimeOffset.UtcNow;
     }
 
     public class GeoLocation(double latitude, double longitude)

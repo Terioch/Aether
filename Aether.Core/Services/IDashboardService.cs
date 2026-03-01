@@ -5,7 +5,7 @@ namespace Aether.Core.Services;
 
 public interface IDashboardService
 {
-    Task<DashboardView> GetDashboardView(GeoLocation geoLocation);
+    Task<DashboardView> GetDashboardView(DashboardViewRequest request);
 
-    Task<MapEntriesView> GetMapEntries(MapEntriesRequest request);
+    Task<MapEntriesView> GetMapEntries(MapEntriesViewRequest request);
 }

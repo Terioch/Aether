@@ -34,6 +34,7 @@ public class AirQualityLocationRepository : ReadonlyRepository, IAirQualityLocat
                 l.id AS locationId,
                 r.id AS readingId,
                 r.index,
+                r.aqi,
                 r.sulfur_dioxide,
                 r.nitrogen_oxide,
                 r.nitrogen_dioxide,
@@ -41,7 +42,8 @@ public class AirQualityLocationRepository : ReadonlyRepository, IAirQualityLocat
                 r.particulate_matter2_5,
                 r.ozone,
                 r.carbon_monoxide,
-                r.ammonia
+                r.ammonia,
+                r.last_updated
             FROM public.locations l
             LEFT JOIN public.air_quality_readings r ON r.location_id = l.id
             WHERE
@@ -54,6 +56,7 @@ public class AirQualityLocationRepository : ReadonlyRepository, IAirQualityLocat
             longitude,
             readingId,
             index,
+            aqi,
             sulfur_dioxide,
             nitrogen_oxide,
             nitrogen_dioxide,
@@ -61,48 +64,11 @@ public class AirQualityLocationRepository : ReadonlyRepository, IAirQualityLocat
             particulate_matter2_5,
             ozone,
             carbon_monoxide,
-            ammonia
+            ammonia,
+            last_updated
         FROM bucketed
         ORDER BY lat_bucket, lng_bucket DESC;
-        ";
-
-        /*var query = @"
-        -- Readings
-        SELECT            
-            l.latitude, 
-            l.longitude,
-            r.id,
-            r.index,
-            r.sulfur_dioxide,                                
-            r.nitrogen_oxide,                                
-            r.nitrogen_dioxide,            
-            r.particulate_matter10,            
-            r.particulate_matter2_5,            
-            r.ozone,            
-            r.carbon_monoxide,            
-            r.ammonia
-        FROM public.air_quality_readings r
-        INNER JOIN public.locations l ON l.id = r.location_id
-        WHERE 
-            l.latitude <= @NorthEastLat AND 
-            l.longitude <= @NorthEastLng AND
-            l.latitude >= @SouthWestLat AND 
-            l.longitude >= @SouthWestLng;
-
-        -- Missing Locations
-        SELECT
-            l.id,
-            l.latitude,
-            l.longitude
-        FROM public.locations l
-        LEFT JOIN public.air_quality_readings r ON l.id = r.location_id
-        WHERE 
-            r.id IS NULL AND
-            l.latitude <= @NorthEastLat AND 
-            l.longitude <= @NorthEastLng AND
-            l.latitude >= @SouthWestLat AND 
-            l.longitude >= @SouthWestLng;
-        ";*/
+        ";       
 
         using var connection = _connectionFactory.StartConnection();
 
