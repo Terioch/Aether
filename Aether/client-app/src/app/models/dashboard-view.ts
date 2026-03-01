@@ -8,7 +8,7 @@ export interface DashboardView {
 
 export interface AirQualityReading {
   id: number;
-  location: GeoLocation;
+  location: AirQualityLocation;
   index: number;
   aqi: number;
   sulfurDioxide: Pollutant;
@@ -20,6 +20,12 @@ export interface AirQualityReading {
   carbonMonoxide: Pollutant;
   ammonia: Pollutant;
   lastUpdated: string;
+}
+
+export interface AirQualityLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
 }
 
 export interface Pollutant {

@@ -56,7 +56,7 @@ public class DashboardService : IDashboardService
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
 
-            var (readingEntity, locationEntity) = await TryGetAirQualityReadingAndLocation(request.ReadingId, request.Location, globalLocation);
+            var (readingEntity, locationEntity) = await TryGetAirQualityReadingAndLocation(request.ReadingId, globalLocation);
             
             if (locationEntity is null)
             {
@@ -113,6 +113,7 @@ public class DashboardService : IDashboardService
                 readingEntity.ParticulateMatter10 = reading.ParticulateMatter10.Concentration;
                 readingEntity.ParticulateMatter2_5 = reading.ParticulateMatter2_5.Concentration;
                 readingEntity.Ammonia = reading.Ammonia.Concentration;
+                readingEntity.LastUpdated = DateTimeOffset.UtcNow;
 
                 await _unitOfWork.CompleteAsync();
 
@@ -123,7 +124,12 @@ public class DashboardService : IDashboardService
             return new AirQualityReading
             {
                 Id = readingEntity.Id,
-                Location = new GeoLocation(readingEntity.Location!.Latitude, readingEntity.Location.Longitude),
+                Location = new AirQualityLocation
+                {
+                    Name = readingEntity.Location!.Name,
+                    Latitude = readingEntity.Location!.Latitude,
+                    Longitude = readingEntity.Location!.Longitude,
+                },
                 Index = readingEntity.Index,
                 Aqi = readingEntity.Aqi,
                 CarbonMonoxide = PollutantUtils.CarbonMonoxide(readingEntity.CarbonMonoxide),
@@ -141,16 +147,15 @@ public class DashboardService : IDashboardService
         return reading!;
     }
 
-    private async Task<(AirQualityReadingEntity?, LocationEntity?)> TryGetAirQualityReadingAndLocation(int? readingId, GeoLocation location, GlobalLocation globalLocation)
+    private async Task<(AirQualityReadingEntity?, LocationEntity?)> TryGetAirQualityReadingAndLocation(int? readingId, GlobalLocation globalLocation)
     {
         AirQualityReadingEntity? readingEntity;
         LocationEntity? locationEntity;
-        if (readingId.HasValue)
+        if (readingId.HasValue && readingId != 0)
         {
-
             readingEntity = await _airQualityReadingRepository.GetAsync(readingId.Value);
             if (readingEntity is null)
-                return (readingEntity, null);
+                return (null, null);
 
             locationEntity = await _locationRepository.GetAsync(readingEntity.LocationId);
 
@@ -161,7 +166,7 @@ public class DashboardService : IDashboardService
         if (locationEntity is null)
             return (null, null);
 
-        readingEntity = await _airQualityReadingRepository.GetByLocation(locationEntity.Latitude, locationEntity.Longitude);
+        readingEntity = await _airQualityReadingRepository.GetByLocationId(locationEntity.Id);
 
         return (readingEntity, locationEntity);
     }
@@ -196,6 +201,9 @@ public class DashboardService : IDashboardService
     {
         /* TODOs:
         Monthly background job that updates indexes every 3 months.  
+        Potential Bug - Some readings come through with no id and so get created despite the location 
+        for that reading being present in the locations table. Centre reading below will never have an id, 
+        which could be related.
         */
         var centreReading = await _memoryCache.GetOrCreateAsync($"reading_location({request.Centre.Latitude}:{request.Centre.Longitude})", async entry =>
         {
@@ -219,8 +227,14 @@ public class DashboardService : IDashboardService
             AirQualityReading = new AirQualityReading
             {
                 Id = r.ReadingId!.Value,
-                Location = new(r.Latitude, r.Longitude),
+                Location = new AirQualityLocation 
+                { 
+                    Name = r.LocationName,
+                    Latitude = r.Latitude,
+                    Longitude = r.Longitude,
+                },
                 Index = r.Index,
+                Aqi = r.Aqi,
                 CarbonMonoxide = PollutantUtils.CarbonMonoxide(r.CarbonMonoxide),
                 SulfurDioxide = PollutantUtils.SulfurDioxide(r.SulfurDioxide),
                 NitrogenDioxide = PollutantUtils.NitrogenDioxide(r.NitrogenDioxide),
@@ -237,7 +251,7 @@ public class DashboardService : IDashboardService
         {
             var responseTasksByLocation = new Dictionary<int, Task<string>>();
             var readingsToCache = new List<AirQualityReadingEntity>();
-            var locationIds = await _locationRepository.GetAllIds();
+            var locationIds = await _airQualityReadingRepository.GetAllLocationIds();
 
             ProcessLocations(missingData, responseTasksByLocation);
 
@@ -250,8 +264,8 @@ public class DashboardService : IDashboardService
                 var responseString = responseTasksByLocation[item.LocationId].Result;
                 var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
                     ?? throw new Exception("Air quality index not found for this location");
-
-                var reading = ApiAirQualityReading.ToReading(response);
+                
+                var reading = ApiAirQualityReading.ToReading(response, item.LocationName);
 
                 if (item is not null && !locationIds.Contains(item.LocationId))
                 {
@@ -287,7 +301,12 @@ public class DashboardService : IDashboardService
                 var reading = new AirQualityReading
                 {
                     Id = readingEntity.Id,
-                    Location = new GeoLocation(item.Latitude, item.Longitude),
+                    Location = new AirQualityLocation
+                    {
+                        Name = item.LocationName,
+                        Latitude = item.Latitude,
+                        Longitude = item.Longitude,
+                    },
                     Index = readingEntity.Index,
                     Aqi = readingEntity.Aqi,
                     CarbonMonoxide = PollutantUtils.CarbonMonoxide(readingEntity.CarbonMonoxide),
@@ -324,7 +343,9 @@ public class DashboardService : IDashboardService
         var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
             ?? throw new Exception("Air quality index not found for this location");
 
-        return ApiAirQualityReading.ToReading(response);
+        var globalLocation = await GetGlobalLocation(location);
+
+        return ApiAirQualityReading.ToReading(response, globalLocation.City);
     }
 
     private void ProcessLocations(

@@ -8,7 +8,7 @@ namespace Aether.Core.Models.Api
 
         public required List<ApiAirQualityItem> List { get; set; }
 
-        public static AirQualityReading ToReading(ApiAirQualityReading apiReading)
+        public static AirQualityReading ToReading(ApiAirQualityReading apiReading, string locationName)
         {
             var item = apiReading.List[0];
             var aqi = AqiCalculation.ComputeAqi(
@@ -22,7 +22,12 @@ namespace Aether.Core.Models.Api
 
             return new AirQualityReading
             {
-                Location = new GeoLocation(apiReading.Coord.Lat, apiReading.Coord.Lon),
+                Location = new AirQualityLocation 
+                {
+                    Name = locationName,
+                    Latitude = apiReading.Coord.Lat,
+                    Longitude = apiReading.Coord.Lon,
+                },
                 Index = item.Main.Aqi,
                 Aqi = aqi,
                 CarbonMonoxide = PollutantUtils.CarbonMonoxide(item.Components.Co),

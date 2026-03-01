@@ -6,7 +6,7 @@ namespace Aether.Core
     {
         public int Id { get; set; }
 
-        public required GeoLocation Location { get; set; }
+        public required AirQualityLocation Location { get; set; }
 
         public int Index { get; set; }
 

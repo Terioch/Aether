@@ -2,6 +2,8 @@ import { DivIcon, LatLng } from "leaflet";
 import { Marker, Popup } from "react-leaflet";
 import { MapEntry } from "../models/map-entries-view";
 import { GeoLocation } from "../models/geo-location";
+import { getAqiStatus } from "../utils/aqi-utils";
+import { useRef } from "react";
 
 interface Props {
   position: LatLng;
@@ -17,40 +19,16 @@ export default function MapMarker({
   entry: { airQualityReading },
   loadDashboardView,
 }: Props) {
-  const getMarkerColour = (aqi: number) => {
-    if (aqi <= 50) return "bg-emerald-500";
-    if (aqi <= 100) return "bg-amber-500";
-    if (aqi <= 150) return "bg-orange-500";
-    if (aqi <= 200) return "bg-red-500";
-    if (aqi <= 300) return "bg-purple-500";
-    return "bg-maroon-500";
-  };
+  console.log(airQualityReading.id);
+  const popupRef = useRef<L.Popup>(null);
 
-  function badgeColour(index: number | undefined) {
-    switch (index) {
-      case 1:
-        return "bg-emerald-500";
-      case 2:
-        return "bg-amber-500";
-      case 3:
-        return "bg-orange-500";
-      case 4:
-        return "bg-red-500";
-      case 5:
-        return "bg-purple-500";
-      default:
-        return "bg-gray-400";
-    }
-  }
-
-  const markerColour = getMarkerColour(airQualityReading.aqi);
-
+  const aqiStatus = getAqiStatus(airQualityReading.aqi);
   const markerHtml = `
     <div class="relative flex items-center justify-center">
-      <div class="w-10 h-10 ${markerColour} text-white text-sm font-bold flex items-center justify-center rounded-full shadow-md">
+      <div class="w-10 h-10 ${aqiStatus.bgColour} text-white text-sm font-bold flex items-center justify-center rounded-full shadow-md">
         ${airQualityReading.aqi}
       </div>
-      <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 rotate-45 w-3 h-3 ${markerColour}"></div>
+      <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 rotate-45 w-3 h-3 ${aqiStatus.bgColour}"></div>
     </div>
   `;
 
@@ -85,44 +63,88 @@ export default function MapMarker({
         new DivIcon({
           iconSize: [30, 30],
           iconAnchor: [12, 41],
-          className: `${markerColour} rounded text-white flex justify-center items-center h-full`,
+          className: `${aqiStatus.bgColour} rounded text-white flex justify-center items-center h-full`,
           html: markerHtml,
         })
       }
-      eventHandlers={{
-        click: (e) => {
-          console.log(
-            "locations",
-            e.latlng,
-            position,
-            airQualityReading.location,
-          );
-          onMarkerClick();
-        },
-      }}
     >
-      <Popup className="w-max p-2" closeButton={false}>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-800">
-          {pollutants.map(({ label, index }, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between min-w-0 gap-2"
-            >
-              <span
-                className="text-gray-600 truncate whitespace-nowrap"
-                title={label}
-              >
-                {label}
+      <Popup
+        ref={popupRef}
+        className="w-max max-h-[200px] p-3"
+        aria-label="Location details"
+        closeButton={false}
+        autoPan={false}
+      >
+        <div className="flex flex-col gap-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3 pb-3 border-b border-gray-200">
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-gray-900">
+                {airQualityReading.location.name}
               </span>
-              <span
-                className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white ${badgeColour(
-                  index as number,
-                )}`}
-              >
-                {index}
+              <span className="text-xs text-gray-400 font-mono mt-0.5">
+                Last updated: 2 min ago
               </span>
             </div>
-          ))}
+            <button
+              className="cursor-pointer text-gray-300 text-xl leading-none hover:text-gray-500 transition-colors"
+              aria-label="Close"
+              onClick={() => popupRef.current?.close()}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* AQI summary */}
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-200">
+            <div
+              className={`flex items-center gap-1.5 rounded-full ${aqiStatus.lightBgColour} border ${aqiStatus.borderColour} px-3 py-1 text-xs font-semibold ${aqiStatus.textColour} whitespace-nowrap`}
+            >
+              {airQualityReading.aqi}
+            </div>
+            <span className="text-xs text-gray-400">
+              {aqiStatus.description}
+            </span>
+          </div>
+
+          {/* Pollutant list */}
+          <div className="flex flex-col divide-y divide-gray-100">
+            {pollutants.map(({ label, index }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between py-1.5"
+              >
+                <span className="text-xs text-gray-700 font-medium">
+                  {label}
+                </span>
+                <span
+                  className={`text-xs font-semibold rounded-full px-2.5 py-0.5 ${aqiStatus.lightBgColour} ${aqiStatus.textColour}`}
+                >
+                  {aqiStatus.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <button
+            className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-gray-900 hover:bg-gray-700 text-white text-xs font-semibold rounded-lg transition-colors mt-1"
+            onClick={onMarkerClick}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            View full details
+          </button>
         </div>
       </Popup>
     </Marker>

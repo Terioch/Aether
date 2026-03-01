@@ -18,6 +18,16 @@ namespace Aether.Repositories
                 .FirstOrDefaultAsync(x => x.Location!.Latitude == lat && x.Location.Longitude == lng);
         }
 
+        public Task<AirQualityReadingEntity?> GetByLocationId(int locationId)
+        {
+            return _entities.FirstOrDefaultAsync(x => x.LocationId == locationId);
+        }
+
+        public Task<HashSet<int>> GetAllLocationIds()
+        {
+            return _entities.Select(x => x.LocationId).ToHashSetAsync();
+        }
+
         public async Task InsertReadingMultiple(IEnumerable<AirQualityReadingEntity> readings)
         {
             var connection = context.Database.GetDbConnection();

@@ -7,6 +7,7 @@ import { PollutantCard } from "./PollutantCard";
 import DashboardClient from "../client/dashboard-client";
 import { GeoLocation as AppGeoLocation } from "../models/geo-location";
 import { toDateLong } from "../utils/date";
+import { getAqiStatus } from "../utils/aqi-utils";
 
 export default function Dashboard() {
   const [view, setView] = useState<DashboardView>();
@@ -22,7 +23,6 @@ export default function Dashboard() {
         longitude: position.coords.longitude,
       };
 
-      setGeoLocation(location);
       loadDashboardView(location);
     });
   }, []);
@@ -31,61 +31,12 @@ export default function Dashboard() {
     location: AppGeoLocation,
     readingId?: number,
   ) => {
+    setGeoLocation(location);
     const res = await client.getDashboardView({
       readingId,
       location,
     });
     setView(res);
-  };
-
-  const getAqiStatus = () => {
-    if (aqi <= 50)
-      return {
-        label: "Good",
-        bgColour: "bg-emerald-500",
-        textColour: "text-emerald-400",
-        description:
-          "Air quality is excellent. It's a great day for outdoor activities.",
-      };
-    if (aqi <= 100)
-      return {
-        label: "Moderate",
-        bgColour: "bg-amber-500",
-        textColour: "text-amber-400",
-        description:
-          "Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution",
-      };
-    if (aqi <= 150)
-      return {
-        label: "Unhealthy for Sensitive Groups",
-        bgColour: "bg-orange-500",
-        textColour: "text-orange-400",
-        description:
-          "Members of sensitive groups may experience health effects. The general public is less likely to be affected",
-      };
-    if (aqi <= 200)
-      return {
-        label: "Unhealthy",
-        bgColour: "bg-red-500",
-        textColour: "text-red-400",
-        description:
-          "Some members of the general public may experience health effects; members of sensitive groups may experience more serious health effects",
-      };
-    if (aqi <= 300)
-      return {
-        label: "Very Unhealthy",
-        bgColour: "bg-purple-500",
-        textColour: "text-purple-400",
-        description:
-          "Health alert: everyone is likely to experience serious health effects",
-      };
-    return {
-      label: "Hazardous",
-      bgColour: "bg-maroon-500",
-      textColour: "text-maroon-400",
-      description:
-        "Health warning of emergency conditions: everyone may experience severe health effects",
-    };
   };
 
   if (!view) {
@@ -99,7 +50,7 @@ export default function Dashboard() {
   }
 
   const aqi = view.airQualityReading.aqi;
-  const aqiStatus = getAqiStatus();
+  const aqiStatus = getAqiStatus(aqi);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-6 md:p-8 rounded">

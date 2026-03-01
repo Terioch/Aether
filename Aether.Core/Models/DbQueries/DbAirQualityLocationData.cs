@@ -15,6 +15,7 @@ public class DbAirQualityItem
 
     public double Latitude { get; set; }
     public double Longitude { get; set; }
+    public required string LocationName { get; set; }
 
     public int? ReadingId { get; set; }
 
