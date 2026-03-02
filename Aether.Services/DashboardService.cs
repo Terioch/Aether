@@ -259,7 +259,6 @@ public class DashboardService : IDashboardService
 
             foreach (var item in missingData)
             {
-                // Temporary until readings are cached
                 //var responseString = "{\"coord\":{\"lon\":-2.3637,\"lat\":53.4541},\"list\":[{\"main\":{\"aqi\":2},\"components\":{\"co\":119.47,\"no\":0,\"no2\":4.88,\"o3\":68.24,\"so2\":0.81,\"pm2_5\":2.94,\"pm10\":3.35,\"nh3\":7.54},\"dt\":1746995138}]}";
                 var responseString = responseTasksByLocation[item.LocationId].Result;
                 var response = JsonConvert.DeserializeObject<ApiAirQualityReading>(responseString)
