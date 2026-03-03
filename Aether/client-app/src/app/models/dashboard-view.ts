@@ -1,9 +1,9 @@
-import { GeoLocation } from "./geo-location";
 import { GlobalLocation } from "./global-location";
 
 export interface DashboardView {
   location: GlobalLocation;
   airQualityReading: AirQualityReading;
+  changePercentages: ChangePercentages;
 }
 
 export interface AirQualityReading {
@@ -33,4 +33,16 @@ export interface Pollutant {
   index: number;
   concentration: number;
   max: number;
+}
+
+interface ChangePercentages {
+  aqi: number;
+  carbonMonoxide: number;
+  sulfurDioxide: number;
+  nitrogenDioxide: number;
+  nitrogenOxide: number;
+  ozone: number;
+  particulateMatter10: number;
+  particulateMatter2_5: number;
+  ammonia: number;
 }

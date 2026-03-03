@@ -10,6 +10,7 @@ using Aether.Core.Utils;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using Serilog;
 
 namespace Aether.Services;
 
@@ -21,10 +22,11 @@ public class DashboardService : IDashboardService
     private readonly IAirQualityLocationRepository _airQualityLocationRepository;
     private readonly IAirQualityReadingRepository _airQualityReadingRepository;
     private readonly IMemoryCache _memoryCache;
+    private readonly ILogger _logger;
 
     const string baseUrl = "http://api.openweathermap.org";
 
-    public DashboardService(IConfiguration configuration, IAetherUnitOfWork unitOfWork, IMemoryCache memoryCache)
+    public DashboardService(IConfiguration configuration, IAetherUnitOfWork unitOfWork, IMemoryCache memoryCache, ILogger logger)
     {
         _apiKey = configuration["ApiKeys:OpenWeatherMapApiKey"]!;
         _unitOfWork = unitOfWork;
@@ -32,31 +34,37 @@ public class DashboardService : IDashboardService
         _airQualityLocationRepository = unitOfWork.AirQualityLocations;
         _airQualityReadingRepository = unitOfWork.AirQualityReadings;
         _memoryCache = memoryCache;
+        _logger = logger;
     }
 
     public async Task<DashboardView> GetDashboardView(DashboardViewRequest request)
     {
         //var manchester = new GeoLocation(53.2844, -2.1443);
-        var location = await GetGlobalLocation(request.Location);
-        var index = await GetAirQualityReading(request, location);
+        var globalLocation = await GetGlobalLocation(request.Location);
+        var (readingEntity, locationEntity) = await TryGetAirQualityReadingAndLocation(request.ReadingId, globalLocation);
+        var reading = await GetAirQualityReading(request, globalLocation, readingEntity, locationEntity);
+        var changePercentages = GetChangePercentages(reading, readingEntity);
 
         return new DashboardView
         {
-            Location = location,
-            AirQualityReading = index
+            Location = globalLocation,
+            AirQualityReading = reading,
+            ChangePercentages = changePercentages
         };
     }
 
-    private async Task<AirQualityReading> GetAirQualityReading(DashboardViewRequest request, GlobalLocation globalLocation)
+    private async Task<AirQualityReading> GetAirQualityReading(
+        DashboardViewRequest request, 
+        GlobalLocation globalLocation,
+        AirQualityReadingEntity? readingEntity,
+        LocationEntity? locationEntity)
     {
         /* TODO: Fetch reading from database or api if not present and update reading if more than 1 day old
          Add last updated column to readings and display on UI
          */
         var reading = await _memoryCache.GetOrCreateAsync($"reading_location({request.Location.Latitude}:{request.Location.Longitude})", async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
-
-            var (readingEntity, locationEntity) = await TryGetAirQualityReadingAndLocation(request.ReadingId, globalLocation);
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);            
             
             if (locationEntity is null)
             {
@@ -88,7 +96,7 @@ public class DashboardService : IDashboardService
                     ParticulateMatter10 = reading.ParticulateMatter10.Concentration,
                     ParticulateMatter2_5 = reading.ParticulateMatter2_5.Concentration,
                     Ammonia = reading.Ammonia.Concentration,
-                    LastUpdated = reading.LastUpdated,
+                    LastUpdated = reading.LastUpdated
                 };
 
                 await _airQualityReadingRepository.AddAsync(readingEntity);
@@ -101,7 +109,8 @@ public class DashboardService : IDashboardService
             // Update if reading is more than a day old
             if (DateTimeOffset.UtcNow > readingEntity.LastUpdated.AddDays(1))
             {
-                var reading = await GetAirQualityReadingFromApi(request.Location);
+                var reading = await GetAirQualityReadingFromApi(request.Location);                
+                // TODO: Calculate percentage change in pollutant concentrations
 
                 readingEntity.Index = reading.Index;
                 readingEntity.Aqi = reading.Aqi;
@@ -147,6 +156,25 @@ public class DashboardService : IDashboardService
         return reading!;
     }
 
+    private static ChangePercentages GetChangePercentages(AirQualityReading reading, AirQualityReadingEntity? readingEntity)
+    {
+        if (readingEntity is null)
+            return new();
+
+        return new ChangePercentages
+        {
+            Aqi = MathUtils.PercentageChange(readingEntity.Aqi, reading.Aqi),
+            CarbonMonoxide = MathUtils.PercentageChange(readingEntity.CarbonMonoxide, reading.CarbonMonoxide.Concentration),
+            SulfurDioxide = MathUtils.PercentageChange(readingEntity.SulfurDioxide, reading.SulfurDioxide.Concentration),
+            NitrogenDioxide = MathUtils.PercentageChange(readingEntity.NitrogenDioxide, reading.NitrogenDioxide.Concentration),
+            NitrogenOxide = MathUtils.PercentageChange(readingEntity.NitrogenOxide, reading.NitrogenOxide.Concentration),
+            Ozone = MathUtils.PercentageChange(readingEntity.Ozone, reading.Ozone.Concentration),
+            ParticulateMatter10 = MathUtils.PercentageChange(readingEntity.ParticulateMatter10, reading.ParticulateMatter10.Concentration),
+            ParticulateMatter2_5 = MathUtils.PercentageChange(readingEntity.ParticulateMatter2_5, reading.ParticulateMatter2_5.Concentration),
+            Ammonia = MathUtils.PercentageChange(readingEntity.Ammonia, reading.Ammonia.Concentration)
+        };
+    }
+
     private async Task<(AirQualityReadingEntity?, LocationEntity?)> TryGetAirQualityReadingAndLocation(int? readingId, GlobalLocation globalLocation)
     {
         AirQualityReadingEntity? readingEntity;
@@ -182,7 +210,7 @@ public class DashboardService : IDashboardService
             var response = JsonConvert.DeserializeObject<List<ApiGlobalLocation>>(responseString)
                 ?? throw new Exception("Air quality index not found for this location");
 
-            var result = response.FirstOrDefault() ?? throw new Exception($"Location was not found for lat: {geoLocation.Latitude}, lon: {geoLocation.Longitude}");
+            var result = response.FirstOrDefault() ?? throw new ArgumentException($"Location was not found for lat: {geoLocation.Latitude}, lon: {geoLocation.Longitude}");
 
             return new GlobalLocation
             {

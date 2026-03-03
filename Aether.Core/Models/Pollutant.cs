@@ -9,4 +9,6 @@ public class Pollutant(string name, int index, double concentration, double max)
     public double Concentration { get; set; } = concentration;
     
     public double Max { get; set; } = max;
+
+    public float ConcentrationChangePercentage { get; set; } = 0;
 }

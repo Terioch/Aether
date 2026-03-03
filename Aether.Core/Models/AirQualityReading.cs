@@ -29,6 +29,8 @@ namespace Aether.Core
         public required Pollutant Ammonia { get; set; }
 
         public DateTimeOffset LastUpdated { get; set; } = DateTimeOffset.UtcNow;
+
+        public float AqiChangePercentage { get; set; } = 0;
     }
 
     public class GeoLocation(double latitude, double longitude)

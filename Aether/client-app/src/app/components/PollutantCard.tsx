@@ -2,9 +2,10 @@ import { Pollutant } from "../models/dashboard-view";
 
 interface Props {
   pollutant: Pollutant;
+  change: number;
 }
 
-export function PollutantCard({ pollutant }: Props) {
+export function PollutantCard({ pollutant, change }: Props) {
   const { name, index, concentration, max } = pollutant;
 
   const getPollutantStatus = () => {
@@ -126,14 +127,22 @@ export function PollutantCard({ pollutant }: Props) {
         >
           {status}
         </span>
-        <div className="flex items-center gap-1 text-slate-400 text-xs font-mono">
-          <span
-            className={concentration > 50 ? "text-red-400" : "text-emerald-400"}
-          >
-            {concentration > 50 ? "↑" : "↓"}
-          </span>
-          <span>{Math.floor(Math.random() * 10)}%</span>
-        </div>
+        {change != 0 && (
+          <div className="flex items-center gap-1 text-slate-400 text-xs font-mono">
+            <span
+              className={
+                concentration > 0
+                  ? "text-red-400"
+                  : concentration < 0
+                    ? "text-emerald-400"
+                    : "text-slate-400"
+              }
+            >
+              {change > 0 ? "↑" : change < 0 ? "↓" : "-"}
+            </span>
+            <span>{change}%</span>
+          </div>
+        )}
       </div>
     </div>
   );

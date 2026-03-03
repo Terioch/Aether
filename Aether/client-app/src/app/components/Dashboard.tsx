@@ -91,6 +91,22 @@ export default function Dashboard() {
                   {aqi}
                 </div>
                 <div className="text-xl text-slate-400 font-semibold">AQI</div>
+                {view.changePercentages.aqi != 0 && (
+                  <div className="flex items-center gap-1 text-slate-400 text-md font-mono">
+                    <span
+                      className={
+                        view.changePercentages.aqi > 0
+                          ? "text-red-400"
+                          : view.changePercentages.aqi < 0
+                            ? "text-emerald-400"
+                            : "text-slate-400"
+                      }
+                    >
+                      {view.changePercentages.aqi > 0 ? "↑" : "↓"}
+                    </span>
+                    <span>{view.changePercentages.aqi}%</span>
+                  </div>
+                )}
               </div>
 
               <div className="text-left md:text-right">
@@ -125,18 +141,38 @@ export default function Dashboard() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <PollutantCard pollutant={view.airQualityReading.nitrogenDioxide} />
-            <PollutantCard pollutant={view.airQualityReading.nitrogenOxide} />
+            <PollutantCard
+              pollutant={view.airQualityReading.nitrogenDioxide}
+              change={view.changePercentages.nitrogenDioxide}
+            />
+            <PollutantCard
+              pollutant={view.airQualityReading.nitrogenOxide}
+              change={view.changePercentages.nitrogenOxide}
+            />
             <PollutantCard
               pollutant={view.airQualityReading.particulateMatter10}
+              change={view.changePercentages.particulateMatter10}
             />
             <PollutantCard
               pollutant={view.airQualityReading.particulateMatter2_5}
+              change={view.changePercentages.particulateMatter2_5}
             />
-            <PollutantCard pollutant={view.airQualityReading.sulfurDioxide} />
-            <PollutantCard pollutant={view.airQualityReading.carbonMonoxide} />
-            <PollutantCard pollutant={view.airQualityReading.ozone} />
-            <PollutantCard pollutant={view.airQualityReading.ammonia} />
+            <PollutantCard
+              pollutant={view.airQualityReading.sulfurDioxide}
+              change={view.changePercentages.sulfurDioxide}
+            />
+            <PollutantCard
+              pollutant={view.airQualityReading.carbonMonoxide}
+              change={view.changePercentages.carbonMonoxide}
+            />
+            <PollutantCard
+              pollutant={view.airQualityReading.ozone}
+              change={view.changePercentages.ozone}
+            />
+            <PollutantCard
+              pollutant={view.airQualityReading.ammonia}
+              change={view.changePercentages.ammonia}
+            />
           </div>
         </div>
 

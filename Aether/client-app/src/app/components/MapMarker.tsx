@@ -4,6 +4,7 @@ import { MapEntry } from "../models/map-entries-view";
 import { GeoLocation } from "../models/geo-location";
 import { getAqiStatus } from "../utils/aqi-utils";
 import { useRef } from "react";
+import { toDateLong } from "../utils/date";
 
 interface Props {
   position: LatLng;
@@ -19,7 +20,6 @@ export default function MapMarker({
   entry: { airQualityReading },
   loadDashboardView,
 }: Props) {
-  console.log(airQualityReading.id);
   const popupRef = useRef<L.Popup>(null);
 
   const aqiStatus = getAqiStatus(airQualityReading.aqi);
@@ -79,11 +79,11 @@ export default function MapMarker({
           {/* Header */}
           <div className="flex items-start justify-between gap-3 pb-3 border-b border-gray-200">
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-gray-900">
+              <span className="text-md font-semibold text-gray-900">
                 {airQualityReading.location.name}
               </span>
               <span className="text-xs text-gray-400 font-mono mt-0.5">
-                Last updated: 2 min ago
+                Last updated: {toDateLong(airQualityReading.lastUpdated)}
               </span>
             </div>
             <button
@@ -98,7 +98,7 @@ export default function MapMarker({
           {/* AQI summary */}
           <div className="flex items-center gap-2 pb-3 border-b border-gray-200">
             <div
-              className={`flex items-center gap-1.5 rounded-full ${aqiStatus.lightBgColour} border ${aqiStatus.borderColour} px-3 py-1 text-xs font-semibold ${aqiStatus.textColour} whitespace-nowrap`}
+              className={`flex justify-center items-center gap-1.5 rounded-full ${aqiStatus.lightBgColour} border ${aqiStatus.borderColour} px-3 py-1 text-lg font-semibold ${aqiStatus.textColour} whitespace-nowrap`}
             >
               {airQualityReading.aqi}
             </div>
@@ -109,7 +109,7 @@ export default function MapMarker({
 
           {/* Pollutant list */}
           <div className="flex flex-col divide-y divide-gray-100">
-            {pollutants.map(({ label, index }) => (
+            {pollutants.map(({ label }) => (
               <div
                 key={label}
                 className="flex items-center justify-between py-1.5"

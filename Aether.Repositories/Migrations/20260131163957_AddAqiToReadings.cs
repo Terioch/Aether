@@ -9,19 +9,7 @@ namespace Aether.Repositories.Migrations
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.Sql(@"
-                DO $$ 
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1 FROM information_schema.columns 
-                        WHERE table_name='locations' AND column_name='name'
-                    ) THEN
-                        ALTER TABLE locations ADD COLUMN name text NOT NULL DEFAULT '';
-                    END IF;
-                END $$;
-            ");
-
+        {            
             migrationBuilder.AddColumn<int>(
                 name: "aqi",
                 table: "air_quality_readings",
