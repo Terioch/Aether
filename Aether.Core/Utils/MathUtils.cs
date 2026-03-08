@@ -8,6 +8,8 @@ public static class MathUtils
         if (oldValue == T.CreateChecked(0))
             return T.CreateChecked(0);
 
-        return (newValue - oldValue) / oldValue * T.CreateChecked(100);
+        var result = (newValue - oldValue) / oldValue * T.CreateChecked(100);
+
+        return result;
     }
 }

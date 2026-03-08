@@ -161,17 +161,26 @@ public class DashboardService : IDashboardService
         if (readingEntity is null)
             return new();
 
+        var carbonMonoxide = MathUtils.PercentageChange(readingEntity.CarbonMonoxide, reading.CarbonMonoxide.Concentration);
+        var sulfurDioxide = MathUtils.PercentageChange(readingEntity.SulfurDioxide, reading.SulfurDioxide.Concentration);
+        var nitrogenDioxide = MathUtils.PercentageChange(readingEntity.NitrogenDioxide, reading.NitrogenDioxide.Concentration);
+        var nitrogenOxide = MathUtils.PercentageChange(readingEntity.NitrogenOxide, reading.NitrogenOxide.Concentration);
+        var ozone = MathUtils.PercentageChange(readingEntity.Ozone, reading.Ozone.Concentration);
+        var particulateMatter10 = MathUtils.PercentageChange(readingEntity.ParticulateMatter10, reading.ParticulateMatter10.Concentration);
+        var particulateMatter2_5 = MathUtils.PercentageChange(readingEntity.ParticulateMatter2_5, reading.ParticulateMatter2_5.Concentration);
+        var ammonia = MathUtils.PercentageChange(readingEntity.Ammonia, reading.Ammonia.Concentration);
+
         return new ChangePercentages
         {
             Aqi = MathUtils.PercentageChange(readingEntity.Aqi, reading.Aqi),
-            CarbonMonoxide = MathUtils.PercentageChange(readingEntity.CarbonMonoxide, reading.CarbonMonoxide.Concentration),
-            SulfurDioxide = MathUtils.PercentageChange(readingEntity.SulfurDioxide, reading.SulfurDioxide.Concentration),
-            NitrogenDioxide = MathUtils.PercentageChange(readingEntity.NitrogenDioxide, reading.NitrogenDioxide.Concentration),
-            NitrogenOxide = MathUtils.PercentageChange(readingEntity.NitrogenOxide, reading.NitrogenOxide.Concentration),
-            Ozone = MathUtils.PercentageChange(readingEntity.Ozone, reading.Ozone.Concentration),
-            ParticulateMatter10 = MathUtils.PercentageChange(readingEntity.ParticulateMatter10, reading.ParticulateMatter10.Concentration),
-            ParticulateMatter2_5 = MathUtils.PercentageChange(readingEntity.ParticulateMatter2_5, reading.ParticulateMatter2_5.Concentration),
-            Ammonia = MathUtils.PercentageChange(readingEntity.Ammonia, reading.Ammonia.Concentration)
+            CarbonMonoxide = Math.Round(carbonMonoxide, 3),
+            SulfurDioxide = Math.Round(sulfurDioxide, 3),
+            NitrogenDioxide = Math.Round(nitrogenDioxide, 3),
+            NitrogenOxide = Math.Round(nitrogenOxide, 3),
+            Ozone = Math.Round(ozone, 3),
+            ParticulateMatter10 = Math.Round(particulateMatter10, 3),
+            ParticulateMatter2_5 = Math.Round(particulateMatter2_5, 3),
+            Ammonia = Math.Round(ammonia, 3)
         };
     }
 
