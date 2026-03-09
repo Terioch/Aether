@@ -109,8 +109,7 @@ public class DashboardService : IDashboardService
             // Update if reading is more than a day old
             if (DateTimeOffset.UtcNow > readingEntity.LastUpdated.AddDays(1))
             {
-                var reading = await GetAirQualityReadingFromApi(request.Location);                
-                // TODO: Calculate percentage change in pollutant concentrations
+                var reading = await GetAirQualityReadingFromApi(request.Location);                                
 
                 readingEntity.Index = reading.Index;
                 readingEntity.Aqi = reading.Aqi;
@@ -173,14 +172,14 @@ public class DashboardService : IDashboardService
         return new ChangePercentages
         {
             Aqi = MathUtils.PercentageChange(readingEntity.Aqi, reading.Aqi),
-            CarbonMonoxide = Math.Round(carbonMonoxide, 3),
-            SulfurDioxide = Math.Round(sulfurDioxide, 3),
-            NitrogenDioxide = Math.Round(nitrogenDioxide, 3),
-            NitrogenOxide = Math.Round(nitrogenOxide, 3),
-            Ozone = Math.Round(ozone, 3),
-            ParticulateMatter10 = Math.Round(particulateMatter10, 3),
-            ParticulateMatter2_5 = Math.Round(particulateMatter2_5, 3),
-            Ammonia = Math.Round(ammonia, 3)
+            CarbonMonoxide = Math.Round(carbonMonoxide, 2),
+            SulfurDioxide = Math.Round(sulfurDioxide, 2),
+            NitrogenDioxide = Math.Round(nitrogenDioxide, 2),
+            NitrogenOxide = Math.Round(nitrogenOxide, 2),
+            Ozone = Math.Round(ozone, 2),
+            ParticulateMatter10 = Math.Round(particulateMatter10, 2),
+            ParticulateMatter2_5 = Math.Round(particulateMatter2_5, 2),
+            Ammonia = Math.Round(ammonia, 2)
         };
     }
 
@@ -287,8 +286,7 @@ public class DashboardService : IDashboardService
         if (missingData.Count > 0)
         {
             var responseTasksByLocation = new Dictionary<int, Task<string>>();
-            var readingsToCache = new List<AirQualityReadingEntity>();
-            var locationIds = await _airQualityReadingRepository.GetAllLocationIds();
+            var readingsToCache = new List<AirQualityReadingEntity>();            
 
             ProcessLocations(missingData, responseTasksByLocation);
 
@@ -303,7 +301,7 @@ public class DashboardService : IDashboardService
                 
                 var reading = ApiAirQualityReading.ToReading(response, item.LocationName);
 
-                if (item is not null && !locationIds.Contains(item.LocationId))
+                if (item is not null)
                 {
                     var readingToCache = new AirQualityReadingEntity
                     {
@@ -326,6 +324,9 @@ public class DashboardService : IDashboardService
             }
 
             //await _airQualityReadingRepository.InsertReadingMultiple(readingsToCache);
+            var locationIds = readingsToCache.Count > 0 ? await _airQualityReadingRepository.GetAllLocationIds() : [];
+            if (locationIds.Count > 0)
+                readingsToCache = readingsToCache.Where(x => locationIds.Contains(x.LocationId)).ToList();
 
             await _airQualityReadingRepository.AddRangeAsync(readingsToCache);
             await _unitOfWork.CompleteAsync();
