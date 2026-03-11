@@ -19,7 +19,7 @@ namespace Aether.Repositories
         }
 
         public Task<AirQualityReadingEntity?> GetByLocationId(int locationId)
-        {
+        {           
             return _entities.FirstOrDefaultAsync(x => x.LocationId == locationId);
         }
 

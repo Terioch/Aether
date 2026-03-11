@@ -22,11 +22,11 @@ public class LocationService : ILocationService
         // 1000 locations processed
         const string baseUrl = "http://geodb-free-service.wirefreethought.com/v1/geo/places?limit=10";
 
-        var offset = 1000;
+        var offset = 1500;
         var tasks = new List<Task<List<LocationEntity>>>();
         var client = new HttpClient();        
 
-        while (offset <= 1490)
+        while (offset <= 1990)
         {    
             var url = baseUrl + $"&offset={offset}";
             tasks.Add(GetLocationsAsync(url, client));

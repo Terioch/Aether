@@ -11,6 +11,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Serilog;
+using System.Xml.Linq;
 
 namespace Aether.Services;
 
@@ -39,6 +40,8 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardView> GetDashboardView(DashboardViewRequest request)
     {
+        //await _locationRepository.Run();
+
         //var manchester = new GeoLocation(53.2844, -2.1443);
         var globalLocation = await GetGlobalLocation(request.Location);
         var (readingEntity, locationEntity) = await TryGetAirQualityReadingAndLocation(request.ReadingId, globalLocation);
@@ -58,10 +61,7 @@ public class DashboardService : IDashboardService
         GlobalLocation globalLocation,
         AirQualityReadingEntity? readingEntity,
         LocationEntity? locationEntity)
-    {
-        /* TODO: Fetch reading from database or api if not present and update reading if more than 1 day old
-         Add last updated column to readings and display on UI
-         */
+    {        
         var reading = await _memoryCache.GetOrCreateAsync($"reading_location({request.Location.Latitude}:{request.Location.Longitude})", async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);            
