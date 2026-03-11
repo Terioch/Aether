@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Aether.Repositories.Migrations
 {
     [DbContext(typeof(AetherContext))]
-    [Migration("20260201130016_AddLastUpdatedToReadings")]
-    partial class AddLastUpdatedToReadings
+    [Migration("20260311205758_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
