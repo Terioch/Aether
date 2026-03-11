@@ -22,6 +22,34 @@ namespace Aether.Repositories.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Aether.Core.Entities.LocationEntity", b =>
+            {
+                b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                b.Property<double>("Latitude")
+                    .HasColumnType("double precision")
+                    .HasColumnName("latitude");
+
+                b.Property<double>("Longitude")
+                    .HasColumnType("double precision")
+                    .HasColumnName("longitude");
+
+                b.Property<string>("Name")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("name");
+
+                b.HasKey("Id")
+                    .HasName("pk_locations");
+
+                b.ToTable("locations", (string)null);
+            });
+
             modelBuilder.Entity("Aether.Core.Entities.AirQualityReadingEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -87,35 +115,12 @@ namespace Aether.Repositories.Migrations
                         .HasDatabaseName("ix_air_quality_readings_location_id");
 
                     b.ToTable("air_quality_readings", (string)null);
-                });
+                });            
 
             modelBuilder.Entity("Aether.Core.Entities.LocationEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<double>("Latitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("latitude");
-
-                    b.Property<double>("Longitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("longitude");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id")
-                        .HasName("pk_locations");
-
-                    b.ToTable("locations", (string)null);
-                });
+            {
+                b.Navigation("AirQualityReading");
+            });
 
             modelBuilder.Entity("Aether.Core.Entities.AirQualityReadingEntity", b =>
                 {
@@ -127,12 +132,7 @@ namespace Aether.Repositories.Migrations
                         .HasConstraintName("fk_air_quality_readings_locations_location_id");
 
                     b.Navigation("Location");
-                });
-
-            modelBuilder.Entity("Aether.Core.Entities.LocationEntity", b =>
-                {
-                    b.Navigation("AirQualityReading");
-                });
+                });           
 #pragma warning restore 612, 618
         }
     }
