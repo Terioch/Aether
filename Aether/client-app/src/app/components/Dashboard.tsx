@@ -39,7 +39,7 @@ export default function Dashboard() {
         readingId,
         location,
       });
-      setView(res);
+      //setView(res);
       setIsLoading(false);
     } catch {
       setIsLoading(false);
@@ -60,7 +60,7 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-950">
         <div className="text-center">
-          <p className="text-gray-50 text-xl">
+          <p className="text-gray-50 text-2xl font-semibold">
             The application is sleeping and is only available at allocated
             times.
           </p>
