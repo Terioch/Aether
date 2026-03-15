@@ -11,6 +11,4 @@ public interface ILocationRepository : IBaseRepository<LocationEntity, int>
     Task<HashSet<int>> GetAllIds();
 
     Task<List<GeoLocation>> GetAllWithinBounds(GeoLocation northEast, GeoLocation southWest);
-
-    Task Run();
 }

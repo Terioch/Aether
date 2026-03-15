@@ -14,21 +14,7 @@ namespace Aether.Repositories
         public Task<LocationEntity?> GetByName(string name)
         {            
             return _entities.FirstOrDefaultAsync(x => x.Name == name);
-        }
-
-        public async Task Run()
-        {
-            var prodOptions = new DbContextOptionsBuilder<AetherContext>()
-                .UseNpgsql("Host=turntable.proxy.rlwy.net;Port=36783;Database=railway;Username=postgres;Password=GdGuOARIliibGXolfJvtPAuaykZRDjKq;TrustServerCertificate=True;Include Error Detail=true");
-
-            using var prodContext = new AetherContext(prodOptions.Options);
-
-            await prodContext.Locations.ExecuteDeleteAsync();
-            await prodContext.AirQualityReadings.ExecuteDeleteAsync();
-
-            await prodContext.Locations.AddRangeAsync(_entities);
-            await prodContext.SaveChangesAsync();
-        }
+        }        
 
         public Task<LocationEntity?> GetByLatLng(double latitude, double longitude)
         {
