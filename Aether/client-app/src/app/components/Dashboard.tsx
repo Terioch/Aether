@@ -39,7 +39,7 @@ export default function Dashboard() {
         readingId,
         location,
       });
-      //setView(res);
+      setView(res);
       setIsLoading(false);
     } catch {
       setIsLoading(false);
