@@ -12,6 +12,7 @@ import { getAqiStatus } from "../utils/aqi-utils";
 export default function Dashboard() {
   const [view, setView] = useState<DashboardView>();
   const [geoLocation, setGeoLocation] = useState<AppGeoLocation>();
+  const [isLoading, setIsLoading] = useState(false);
   const client = new DashboardClient();
 
   const Map = dynamic(() => import("./Map"), { ssr: false });
@@ -31,19 +32,38 @@ export default function Dashboard() {
     location: AppGeoLocation,
     readingId?: number,
   ) => {
+    setIsLoading(true);
     setGeoLocation(location);
-    const res = await client.getDashboardView({
-      readingId,
-      location,
-    });
-    setView(res);
+    try {
+      const res = await client.getDashboardView({
+        readingId,
+        location,
+      });
+      setView(res);
+      setIsLoading(false);
+    } catch {
+      setIsLoading(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+        </div>
+      </div>
+    );
+  }
 
   if (!view) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-950">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+          <p className="text-gray-50 text-xl">
+            The application is sleeping and is only available at allocated
+            times.
+          </p>
         </div>
       </div>
     );
