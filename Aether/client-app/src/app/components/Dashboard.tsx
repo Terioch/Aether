@@ -12,7 +12,7 @@ import { getAqiStatus } from "../utils/aqi-utils";
 export default function Dashboard() {
   const [view, setView] = useState<DashboardView>();
   const [geoLocation, setGeoLocation] = useState<AppGeoLocation>();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const client = new DashboardClient();
 
   const Map = dynamic(() => import("./Map"), { ssr: false });
