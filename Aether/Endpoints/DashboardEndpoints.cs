@@ -11,6 +11,7 @@ namespace Aether.Endpoints
         {
             app.MapPost("api/dashboard", GetDashboard);
             app.MapPost("api/dashboard/map-entries", GetMapEntries);
+            app.MapPost("api/dashboard/test", Test);
         }
 
         private static async Task<DashboardView> GetDashboard(DashboardViewRequest request, IDashboardService service)
@@ -21,6 +22,11 @@ namespace Aether.Endpoints
         private static async Task<MapEntriesView> GetMapEntries(MapEntriesViewRequest parameters, IDashboardService service)
         {
             return await service.GetMapEntries(parameters);
+        }
+
+        private static string Test()
+        {
+            return "working";
         }
     }
 }
