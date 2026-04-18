@@ -50,6 +50,7 @@ public class AirQualityLocationRepository : ReadonlyRepository, IAirQualityLocat
             WHERE
                 l.latitude BETWEEN @SouthWestLat AND @NorthEastLat AND
                 l.longitude BETWEEN @SouthWestLng AND @NorthEastLng
+            ORDER BY r.last_updated DESC
         )
         SELECT DISTINCT ON (lat_bucket, lng_bucket)
             locationId,

@@ -250,13 +250,13 @@ public class DashboardService : IDashboardService
         // Split bounds into cells where the lat/lng step represents the size of each cell.
         var latSpan = request.Bounds.NorthEast.Latitude - request.Bounds.SouthWest.Latitude;
         var lngSpan = request.Bounds.NorthEast.Longitude - request.Bounds.SouthWest.Longitude;
-        var gridSize = 10;
+        var gridSize = 5;
         var latStep = latSpan / gridSize;
         var lngStep = lngSpan / gridSize;
 
         var airQualityData = await _airQualityLocationRepository.GetAirQualityDataWithinBounds(request.Bounds.NorthEast, request.Bounds.SouthWest, latStep, lngStep);
         var readingsData = airQualityData.Where(x => x.ReadingId.HasValue).ToList();
-        var missingData = airQualityData.Where(x => x.ReadingId is null).ToList();
+        var missingData = airQualityData.Where(x => x.ReadingId is null).ToList();       
 
         var mapEntries = readingsData.ConvertAll(r => new MapEntry
         {
