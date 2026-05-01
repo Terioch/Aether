@@ -237,6 +237,8 @@ public class DashboardService : IDashboardService
     {
         /* TODOs:
         Monthly background job that updates indexes every 3 months.  
+        Implement JWT user authentication.
+        Allow users to set their default location that they will be taken to when first loading the dashboard.
         Potential Bug - Some readings come through with no id and so get created despite the location 
         for that reading being present in the locations table. Centre reading below will never have an id, 
         which could be related.
